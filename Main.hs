@@ -2,7 +2,7 @@
 
 module Main (main) where
 
-import Control.Monad (unless, when)
+import Control.Monad (unless, when, foldM)
 import Data.List (stripPrefix)
 import System.Console.GetOpt
 import System.Directory
@@ -28,9 +28,9 @@ data PlanMode = RunMode | DryRunMode | DiffMode | UndoMode deriving (Eq, Show)
 
 -- Convert a series of command-line parameters into an execution plan.
 makePlan :: String -> String -> [String] -> [Flag] -> Either String Plan
-makePlan pattern replacement files flags = foldl applyFlag startingPlan flags
+makePlan pattern replacement files flags = foldM applyFlag startingPlan flags
     where
-      startingPlan = Right Plan {
+      startingPlan = Plan {
         planMode = RunMode,
         filesToProcess = files,
         patternString = pattern,
@@ -40,7 +40,8 @@ makePlan pattern replacement files flags = foldl applyFlag startingPlan flags
         patchFilePath = Nothing,
         keepGoingAfterErrors = False
         }
-      applyFlag (Right plan) flag = case flag of
+      applyFlag :: Plan -> Flag -> Either String Plan
+      applyFlag plan flag = case flag of
         BackupSuffixFlag suffix -> Right plan { backupSuffix = Just suffix }
         FixedStringsFlag -> Right plan { fixedStrings = True }
         PatchFileFlag path -> Right plan { patchFilePath = Just path }
@@ -49,7 +50,6 @@ makePlan pattern replacement files flags = foldl applyFlag startingPlan flags
         NoModifyFlag | runMode -> Right plan { planMode = DryRunMode }
         _ -> Left "can't construct plan"
         where runMode = planMode plan == RunMode
-      applyFlag left _ = left
 
 -- Abstract set of possible flags.
 data Flag
@@ -95,20 +95,20 @@ parseArgs progName args
     usage = usageInfo progName optSpecs
     withProgName error = progName ++ ": " ++ error
 
-checkFile :: FilePath -> IO (Maybe String)
+checkFile :: FilePath -> IO (Either String ())
 checkFile path = do
-  isFile <- doesFileExist path
-  if (not isFile)
-    then do isDir <- doesDirectoryExist path
-            return $ Just (if isDir
-                           then "is a directory"
-                           else "no such file")
-    else do perms <- getPermissions path
-            if not (readable perms)
-              then return $ Just "not readable"
-              else if not (writable perms)
-                   then return $ Just "not writable"
-                   else return Nothing
+  isDir <- doesDirectoryExist path
+  if (isDir)
+    then return $ Left "is a directory"
+    else do isFile <- doesFileExist path
+            if (not isFile)
+              then  return $ Left "no such file"
+              else do perms <- getPermissions path
+                      if not (readable perms)
+                        then return $ Left "not readable"
+                        else if not (writable perms)
+                             then return $ Left "not writable"
+                             else return $ Right ()
               
 maybeProcessFiles :: Plan -> IO [String]
 maybeProcessFiles plan = loop [] (filesToProcess plan) where
@@ -116,8 +116,8 @@ maybeProcessFiles plan = loop [] (filesToProcess plan) where
   loop errors (path:paths) = do
     fileError <- checkFile path
     let errors' = case fileError of
-            Nothing -> errors
-            Just error -> (path ++ ": " ++ error):errors
+            Right () -> errors
+            Left error -> (path ++ ": " ++ error):errors
       in loop errors' paths
 
 main = do
