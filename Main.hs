@@ -18,6 +18,11 @@ import Text.Regex.PCRE.Light
 
 type Error = String
 
+data FileError = FileError FilePath Error
+
+instance Show FileError where
+    show (FileError path error) = path ++ ": " ++ error
+
 -- An execution plan.
 data Plan = Plan {
   planMode :: PlanMode,
@@ -119,18 +124,14 @@ checkFile path = liftM firstJust $ sequence $ map ($ path) checks
             , makeCheck "not writable" $ fmap writable . getPermissions
             ]
 
+validateFiles :: Plan -> IO [FileError]
+validateFiles plan = do
+    maybes <- forM (filesToProcess plan) $ \path -> do
+        error <- checkFile path
+        return $ fmap (FileError path) error
+    return $ catMaybes maybes
 
-validateFiles :: Plan -> IO [Error]
-validateFiles plan = loop [] (filesToProcess plan) where
-  loop errors [] = return $ reverse errors
-  loop errors (path:paths) = do
-    fileError <- checkFile path
-    let errors' = case fileError of
-            Nothing -> errors
-            Just error -> (path ++ ": " ++ error):errors
-      in loop errors' paths
-
-processFiles :: Plan -> IO [Error]
+processFiles :: Plan -> IO [FileError]
 processFiles = undefined
 
 main = do
@@ -140,10 +141,10 @@ main = do
     Left error -> putStr error
     Right plan -> do
       errors <- validateFiles plan
-      putStr (unlines errors)
+      mapM_ print errors
       when (null errors) $ do
           errors <- processFiles plan
-          putStr (unlines errors)
+          mapM_ print errors
 
 --(require file/sha1)
 --
