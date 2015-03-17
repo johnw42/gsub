@@ -2,12 +2,14 @@
 
 module Main (main) where
 
-import Control.Monad (unless, when, foldM)
-import Data.List (stripPrefix)
+import Control.Monad
+import Control.Monad.Maybe
+import Control.Monad.Trans
+
 import System.Console.GetOpt
 import System.Directory
 import System.Environment
-import System.Exit (exitFailure)
+
 import Test.HUnit
 import Text.Regex.Base
 import Text.Regex.PCRE.Light
@@ -95,29 +97,42 @@ parseArgs progName args
     usage = usageInfo progName optSpecs
     withProgName error = progName ++ ": " ++ error
 
-checkFile :: FilePath -> IO (Either String ())
-checkFile path = do
-  isDir <- doesDirectoryExist path
-  if (isDir)
-    then return $ Left "is a directory"
-    else do isFile <- doesFileExist path
-            if (not isFile)
-              then  return $ Left "no such file"
-              else do perms <- getPermissions path
-                      if not (readable perms)
-                        then return $ Left "not readable"
-                        else if not (writable perms)
-                             then return $ Left "not writable"
-                             else return $ Right ()
-              
+type FileCheck = FilePath -> IO (Maybe String)
+
+makeFileCheck :: String -> (FilePath -> IO Bool) -> FileCheck
+makeFileCheck error test path = do
+    ok <- test path
+    return $ if ok then Nothing else Just error
+
+checkFile :: FileCheck
+checkFile path = loop fileChecks
+    where
+        loop [] = return Nothing
+        loop (c:cs) = do
+            r <- c path
+            case r of
+                Nothing -> loop cs
+                error -> return error
+        fileChecks =
+            [ makeFileCheck "is a directory" (liftM not . doesDirectoryExist)
+            , makeFileCheck "no such file" doesFileExist
+            , makeFileCheck "not readable" $ \path -> do
+                perms <- getPermissions path
+                return $ readable perms
+            , makeFileCheck "not writable" $ \path -> do
+                perms <- getPermissions path
+                return $ writable perms
+            ]
+
+
 maybeProcessFiles :: Plan -> IO [String]
 maybeProcessFiles plan = loop [] (filesToProcess plan) where
   loop errors [] = return $ reverse errors
   loop errors (path:paths) = do
     fileError <- checkFile path
     let errors' = case fileError of
-            Right () -> errors
-            Left error -> (path ++ ": " ++ error):errors
+            Nothing -> errors
+            Just error -> (path ++ ": " ++ error):errors
       in loop errors' paths
 
 main = do
