@@ -16,6 +16,8 @@ import Test.HUnit
 import Text.Regex.Base
 import Text.Regex.PCRE.Light
 
+type Error = String
+
 -- An execution plan.
 data Plan = Plan {
   planMode :: PlanMode,
@@ -86,7 +88,7 @@ optSpecs =
   ]
 
 -- Parse arguments into an error message or an execution plan.
-parseArgs :: String -> [String] -> Either String Plan
+parseArgs :: String -> [Error] -> Either String Plan
 parseArgs progName args
   | HelpFlag `elem` flags = Left usage
   | not (null errors) = Left $ concat $ map withProgName errors
@@ -104,7 +106,7 @@ firstJust :: [Maybe a] -> Maybe a
 firstJust = head . (++[Nothing]) . dropWhile isNothing
 
 -- Try to find a reason why a file can't be operated on.
-checkFile :: FilePath -> IO (Maybe String)
+checkFile :: FilePath -> IO (Maybe Error)
 checkFile path = liftM firstJust $ sequence $ map ($ path) checks
     where
         makeCheck reason test path = do
@@ -118,8 +120,8 @@ checkFile path = liftM firstJust $ sequence $ map ($ path) checks
             ]
 
 
-maybeProcessFiles :: Plan -> IO [String]
-maybeProcessFiles plan = loop [] (filesToProcess plan) where
+validateFiles :: Plan -> IO [Error]
+validateFiles plan = loop [] (filesToProcess plan) where
   loop errors [] = return $ reverse errors
   loop errors (path:paths) = do
     fileError <- checkFile path
@@ -128,14 +130,20 @@ maybeProcessFiles plan = loop [] (filesToProcess plan) where
             Just error -> (path ++ ": " ++ error):errors
       in loop errors' paths
 
+processFiles :: Plan -> IO [Error]
+processFiles = undefined
+
 main = do
   args <- getArgs
   progName <- getProgName
   case parseArgs progName args of
     Left error -> putStr error
     Right plan -> do
-      errors <- maybeProcessFiles plan
+      errors <- validateFiles plan
       putStr (unlines errors)
+      when (null errors) $ do
+          errors <- processFiles plan
+          putStr (unlines errors)
 
 --(require file/sha1)
 --
