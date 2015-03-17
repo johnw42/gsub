@@ -6,6 +6,8 @@ import Control.Monad
 import Control.Monad.Maybe
 import Control.Monad.Trans
 
+import Data.Maybe
+
 import System.Console.GetOpt
 import System.Directory
 import System.Environment
@@ -97,31 +99,20 @@ parseArgs progName args
     usage = usageInfo progName optSpecs
     withProgName error = progName ++ ": " ++ error
 
-type FileCheck = FilePath -> IO (Maybe String)
+firstValue :: [Maybe a] -> Maybe a
+firstValue = head . (++[Nothing]) . dropWhile isNothing
 
-makeFileCheck :: String -> (FilePath -> IO Bool) -> FileCheck
-makeFileCheck error test path = do
-    ok <- test path
-    return $ if ok then Nothing else Just error
-
-checkFile :: FileCheck
-checkFile path = loop fileChecks
+checkFile :: FilePath -> IO (Maybe String)
+checkFile path = liftM firstValue $ sequence checks
     where
-        loop [] = return Nothing
-        loop (c:cs) = do
-            r <- c path
-            case r of
-                Nothing -> loop cs
-                error -> return error
-        fileChecks =
-            [ makeFileCheck "is a directory" (liftM not . doesDirectoryExist)
-            , makeFileCheck "no such file" doesFileExist
-            , makeFileCheck "not readable" $ \path -> do
-                perms <- getPermissions path
-                return $ readable perms
-            , makeFileCheck "not writable" $ \path -> do
-                perms <- getPermissions path
-                return $ writable perms
+        makeCheck error test = do
+            ok <- test
+            return $ if ok then Nothing else Just error
+        checks =
+            [ makeCheck "is a directory" $ fmap not $ doesDirectoryExist path
+            , makeCheck "no such file" $ doesFileExist path
+            , makeCheck "not readable" $ fmap readable $ getPermissions path
+            , makeCheck "not writable" $ fmap writable $ getPermissions path
             ]
 
 
