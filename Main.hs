@@ -99,20 +99,22 @@ parseArgs progName args
     usage = usageInfo progName optSpecs
     withProgName error = progName ++ ": " ++ error
 
-firstValue :: [Maybe a] -> Maybe a
-firstValue = head . (++[Nothing]) . dropWhile isNothing
+-- Find the first Just in a list.
+firstJust :: [Maybe a] -> Maybe a
+firstJust = head . (++[Nothing]) . dropWhile isNothing
 
+-- Try to find a reason why a file can't be operated on.
 checkFile :: FilePath -> IO (Maybe String)
-checkFile path = liftM firstValue $ sequence checks
+checkFile path = liftM firstJust $ sequence $ map ($ path) checks
     where
-        makeCheck error test = do
-            ok <- test
-            return $ if ok then Nothing else Just error
+        makeCheck reason test path = do
+            ok <- test path
+            return $ if ok then Nothing else Just reason
         checks =
-            [ makeCheck "is a directory" $ fmap not $ doesDirectoryExist path
-            , makeCheck "no such file" $ doesFileExist path
-            , makeCheck "not readable" $ fmap readable $ getPermissions path
-            , makeCheck "not writable" $ fmap writable $ getPermissions path
+            [ makeCheck "is a directory" $ fmap not . doesDirectoryExist
+            , makeCheck "no such file" $ doesFileExist
+            , makeCheck "not readable" $ fmap readable . getPermissions
+            , makeCheck "not writable" $ fmap writable . getPermissions
             ]
 
 
