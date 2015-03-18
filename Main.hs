@@ -5,13 +5,11 @@ module Main (main) where
 import Control.Monad
 import Control.Monad.Maybe
 import Control.Monad.Trans
-
 import Data.Maybe
-
 import System.Console.GetOpt
 import System.Directory
 import System.Environment
-
+import System.IO (stdout)
 import Test.HUnit
 import Text.Regex.Base
 import Text.Regex.PCRE.Light
@@ -33,34 +31,37 @@ data Plan = Plan {
   fixedStrings :: Bool,
   patchFilePath :: Maybe FilePath,
   keepGoingAfterErrors :: Bool
-  } deriving Show
+  } deriving (Eq, Show)
 
 data PlanMode = RunMode | DryRunMode | DiffMode | UndoMode deriving (Eq, Show)
+
+defaultPlan :: String -> String -> [FilePath] -> Plan
+defaultPlan pattern replacement files = Plan
+    { planMode = RunMode
+    , filesToProcess = files
+    , patternString = pattern
+    , replacementString = replacement
+    , backupSuffix = Nothing
+    , fixedStrings = False
+    , patchFilePath = Nothing
+    , keepGoingAfterErrors = False
+    }
 
 -- Convert a series of command-line parameters into an execution plan.
 makePlan :: String -> String -> [String] -> [Flag] -> Either String Plan
 makePlan pattern replacement files flags = foldM applyFlag startingPlan flags
     where
-      startingPlan = Plan {
-        planMode = RunMode,
-        filesToProcess = files,
-        patternString = pattern,
-        replacementString = replacement,
-        backupSuffix = Nothing,
-        fixedStrings = False,
-        patchFilePath = Nothing,
-        keepGoingAfterErrors = False
-        }
-      applyFlag :: Plan -> Flag -> Either String Plan
-      applyFlag plan flag = case flag of
-        BackupSuffixFlag suffix -> Right plan { backupSuffix = Just suffix }
-        FixedStringsFlag -> Right plan { fixedStrings = True }
-        PatchFileFlag path -> Right plan { patchFilePath = Just path }
-        UndoFlag | runMode -> Right plan { planMode = UndoMode }
-        DiffFlag | runMode -> Right plan { planMode = DiffMode }
-        NoModifyFlag | runMode -> Right plan { planMode = DryRunMode }
-        _ -> Left "can't construct plan"
-        where runMode = planMode plan == RunMode
+        startingPlan = defaultPlan pattern replacement files
+        applyFlag :: Plan -> Flag -> Either String Plan
+        applyFlag plan flag = case flag of
+            BackupSuffixFlag suffix -> Right plan { backupSuffix = Just suffix }
+            FixedStringsFlag -> Right plan { fixedStrings = True }
+            PatchFileFlag path -> Right plan { patchFilePath = Just path }
+            UndoFlag | runMode -> Right plan { planMode = UndoMode }
+            DiffFlag | runMode -> Right plan { planMode = DiffMode }
+            NoModifyFlag | runMode -> Right plan { planMode = DryRunMode }
+            _ -> Left "can't construct plan"
+            where runMode = planMode plan == RunMode
 
 -- Abstract set of possible flags.
 data Flag
@@ -98,17 +99,32 @@ parseArgs progName args
   | HelpFlag `elem` flags = Left usage
   | not (null errors) = Left $ concat $ map withProgName errors
   | otherwise = case otherArgs of
-                  (pattern:replacement:files) ->
-                      makePlan pattern replacement files flags
+                  (pattern:replacement:file:files) ->
+                      makePlan pattern replacement (file:files) flags
                   _ -> Left $ withProgName "not enough arguments\n"
   where
     (flags, otherArgs, errors) = getOpt Permute optSpecs args
     usage = usageInfo progName optSpecs
     withProgName error = progName ++ ": " ++ error
 
+parseArgs_tests = "parseArgs" ~: test
+    [ parseArgs "gsub" [] ~?= Left "gsub: not enough arguments\n"
+    , parseArgs "gsub" ["--xyzzy"] ~?= Left "gsub: unrecognized option `--xyzzy'\n"
+    , parseArgs "gsub" ["a", "b"] ~?= Left "gsub: not enough arguments\n"
+    , parseArgs "gsub" ["a", "b", "c"] ~?= Right (defaultPlan "a" "b" ["c"])
+    , parseArgs "gsub" ["a", "b", "c", "d"] ~?= Right (defaultPlan "a" "b" ["c", "d"])
+    ]
+
 -- Find the first Just in a list.
 firstJust :: [Maybe a] -> Maybe a
 firstJust = head . (++[Nothing]) . dropWhile isNothing
+
+firstJust_tests = "firstJust" ~: test
+    [ firstJust [] ~?= (Nothing :: Maybe ())
+    , firstJust [Just 1] ~?= Just 1
+    , firstJust [Just 1, Just 2] ~?= Just 1
+    , firstJust [Nothing, Just 1, Just 2] ~?= Just 1
+    ]
 
 -- Try to find a reason why a file can't be operated on.
 checkFile :: FilePath -> IO (Maybe Error)
@@ -134,7 +150,7 @@ validateFiles plan = do
 processFiles :: Plan -> IO [FileError]
 processFiles = undefined
 
-main = do
+realMain = do
   args <- getArgs
   progName <- getProgName
   case parseArgs progName args of
@@ -145,6 +161,17 @@ main = do
       when (null errors) $ do
           errors <- processFiles plan
           mapM_ print errors
+
+testMain = runTestText (putTextToHandle stdout False) $ test
+    [ firstJust_tests
+    , parseArgs_tests
+    ]
+
+#ifdef TEST
+main = testMain
+#else
+main = realMain
+#endif
 
 --(require file/sha1)
 --
