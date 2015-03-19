@@ -6,9 +6,9 @@ import Control.Monad
 import Control.Monad.Random
 import Data.Either
 import Data.List
+import Data.Maybe
 import System.IO (stdout)
 import Test.QuickCheck
-import Test.HUnit
 
 -- My implementation.
 powerset :: [a] -> [[a]]
@@ -23,8 +23,8 @@ powerset' = filterM (const [False, True])
 -- Given two lists and a source of randomness, combine elements from the
 -- two lists randomly while preserving the order of elements within each
 -- list.
-shuffle :: (RandomGen g) => g -> [a] -> [a] -> [a]
-shuffle g as bs = evalRand (loop as (length as) bs (length bs)) g where
+shuffleMerge :: (RandomGen g) => g -> [a] -> [a] -> [a]
+shuffleMerge g as bs = evalRand (loop as (length as) bs (length bs)) g where
     loop :: (RandomGen g) => [a] -> Int -> [a] -> Int -> Rand g [a]
     loop as _ [] _ = return as
     loop [] _ bs _ = return bs
@@ -36,12 +36,12 @@ shuffle g as bs = evalRand (loop as (length as) bs (length bs)) g where
         else do rest <- loop (a:as) aLen bs (bLen - 1)
                 return $ b:rest
 
-prop_shuffle (Large seed) (Small leftLen) (Small rightLen) =
+prop_shuffleMerge (Large seed) (Small leftLen) (Small rightLen) =
     lefts == lefts' && rights == rights'
     where
         lefts = [1..leftLen]
         rights = [1..rightLen]
-        shuf = shuffle (mkStdGen seed) (map Left lefts) (map Right rights)
+        shuf = shuffleMerge (mkStdGen seed) (map Left lefts) (map Right rights)
         (lefts', rights') = partitionEithers shuf
 
 newtype PosArg = PosArg { getPosArg :: String } deriving Show
@@ -49,7 +49,7 @@ newtype ArgList = ArgList [String] deriving Show
 
 instance Arbitrary PosArg where
     arbitrary = do
-        s <- arbitrary `suchThat` (not . (elem '-'))
+        s <- arbitrary `suchThat` notElem '-'
         return $ PosArg s
 
 nonFlagString :: Gen String
@@ -64,22 +64,42 @@ instance Arbitrary PosArgs where
 
 prop_PosArgs (PosArgs args) = length args >= 3
 
--- Given a generator for a list of positional arguments, randomly add some valid flags.
-withFlags :: Gen [String] -> Gen [String]
-withFlags posArgsGen = do
-    posArgs <- posArgsGen
-    runModeFlag <- elements ["--diff", "-D", "--no-modify", "-N", "-u", "--undo"]
+-- Type of command-line argument lists.
+newtype Arguments = Arguments [String] deriving Show
+instance Arbitrary Arguments where
+    arbitrary = do
+       (PosArgs posArgs) <- arbitrary
+       fmap Arguments $ withFlags posArgs
+
+modeFlags = ["--diff", "-D", "--no-modify", "-N", "-u", "--undo"]
+
+-- A generator for random valid flags.
+flagsGen :: Gen [String]
+flagsGen = do
+    runModeFlag <- elements modeFlags
     patternModeFlag <- elements ["-F", "--fixed-strings"]
     backupFileName <- listOf1 arbitrary
     backupFlag <- elements ["-i" ++ backupFileName, "--backup-suffix=" ++ backupFileName]
-    flags <- elements $ powerset [runModeFlag, patternModeFlag, backupFlag]
-    flags <- elements $ permutations $ flags
+    flagSets <- shuffle $ powerset [runModeFlag, patternModeFlag, backupFlag]
+    flags <- elements flagSets
+    shuffle flags
+
+-- Given a generator for a list of positional arguments, randomly add some valid flags.
+withFlags :: [String] -> Gen [String]
+withFlags posArgs = do
+    flagArgs <- flagsGen
     (Large seed) <- arbitrary
-    return $ shuffle (mkStdGen seed) flags posArgs
+    return $ shuffleMerge (mkStdGen seed) flagArgs posArgs
+
+prop_withFlags (PosArgs posArgs) =
+    forAll (withFlags posArgs) $ \allArgs ->
+    forAll (elements posArgs) $ \posArg ->
+    posArg `elem` allArgs
 
 -- Test with too few arguments.
 prop_parseArgs_notEnough name =
-    forAll (withFlags $ resize 2 $ listOf nonFlagString) $ \args ->
+    forAll (resize 2 $ listOf nonFlagString) $ \posArgs ->
+    forAll (withFlags posArgs) $ \args ->
     case parseArgs name args of
         Left error -> counterexample error $ property $ error == name ++ ": not enough arguments\n"
         Right _ -> property False
@@ -88,9 +108,9 @@ prop_parseArgs_notEnough name =
 prop_parseArgs_noFlags name (PosArgs args@(pattern:replacement:files)) =
     parseArgs name args == Right (defaultPlan pattern replacement files)
 
--- Test with valie flags.
+-- Test with valid flags.
 prop_parseArgs_withFlags name (PosArgs (pattern:replacement:files)) =
-    forAll (withFlags $ return $ [pattern, replacement] ++ files) $ \args ->
+    forAll (withFlags $ [pattern, replacement] ++ files) $ \args ->
     case parseArgs name args of
         Right plan -> conjoin
             [ filesToProcess plan == files
@@ -99,28 +119,38 @@ prop_parseArgs_withFlags name (PosArgs (pattern:replacement:files)) =
             ]
         Left error -> counterexample error $ property False
 
-parseArgs_tests = "parseArgs" ~: test
-    [ parseArgs "gsub" [] ~?= Left "gsub: not enough arguments\n"
-    , parseArgs "gsub" ["--xyzzy"] ~?= Left "gsub: unrecognized option `--xyzzy'\n"
-    , parseArgs "gsub" ["a", "b"] ~?= Left "gsub: not enough arguments\n"
-    , parseArgs "gsub" ["a", "b", "c"] ~?= Right (defaultPlan "a" "b" ["c"])
-    , parseArgs "gsub" ["a", "b", "c", "d"] ~?= Right (defaultPlan "a" "b" ["c", "d"])
-    ]
+prop_parseArgs_withDiff name (Arguments args) =
+    ("-D" `elem` args || "--diff" `elem` args) ==> case parseArgs name args of
+        Left _ -> True
+        Right plan -> planMode plan == DiffMode
 
-firstJust_tests = "firstJust" ~: test
-    [ firstJust [] ~?= (Nothing :: Maybe ())
-    , firstJust [Just 1] ~?= Just 1
-    , firstJust [Just 1, Just 2] ~?= Just 1
-    , firstJust [Nothing, Just 1, Just 2] ~?= Just 1
-    ]
+prop_parseArgs_withDryRun name (Arguments args) =
+    ("-N" `elem` args || "--no-modify" `elem` args) ==> case parseArgs name args of
+        Left _ -> True
+        Right plan -> planMode plan == DryRunMode
+
+prop_parseArgs_withUndo name (Arguments args) =
+    ("-u" `elem` args || "--undo" `elem` args) ==> case parseArgs name args of
+        Left _ -> True
+        Right plan -> planMode plan == UndoMode
+
+prop_parseArgs_withDefaultMode name (Arguments args) =
+    not (any (`elem` modeFlags) args) ==> case parseArgs name args of
+        Left _ -> False
+        Right plan -> planMode plan == RunMode
+
+-- Test that firstJust works.
+prop_firstJust_empty = once $ isNothing $ firstJust []
+prop_firstJust_allNothing (Positive (Small n)) =
+    isNothing $ firstJust $ replicate n Nothing
+prop_firstJust_typical (NonEmpty items) =
+    case firstJust items of
+        Nothing -> all isNothing items
+        Just x -> Just x == head (dropWhile isNothing items)
 
 return []
-main = do
-    runTestText (putTextToHandle stdout False) $ test
-        [ firstJust_tests
-        , parseArgs_tests
-        ]
+main =
     $forAllProperties $ \prop -> do
-        result <- quickCheckWithResult stdArgs { chatty = False } prop
+        result <- quickCheckWithResult stdArgs { chatty = False, maxDiscardRatio = 10 } prop
         putStr $ output result
         return result

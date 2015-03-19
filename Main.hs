@@ -112,7 +112,7 @@ parseArgs progName args
 
 -- Find the first Just in a list.
 firstJust :: [Maybe a] -> Maybe a
-firstJust = head . (++[Nothing]) . dropWhile isNothing
+firstJust = listToMaybe . catMaybes
 
 -- Try to find a reason why a file can't be operated on.
 checkFile :: FilePath -> IO (Maybe Error)
