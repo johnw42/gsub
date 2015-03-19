@@ -1,6 +1,10 @@
 {-# LANGUAGE CPP, TemplateHaskell #-}
 
+#ifdef TEST
+module Main where
+#else
 module Main (main) where
+#endif
 
 import Control.Monad
 import Control.Monad.Maybe
@@ -9,8 +13,7 @@ import Data.Maybe
 import System.Console.GetOpt
 import System.Directory
 import System.Environment
-import System.IO (stdout)
-import Test.HUnit
+import Test.QuickCheck
 import Text.Regex.Base
 import Text.Regex.PCRE.Light
 
@@ -107,24 +110,9 @@ parseArgs progName args
     usage = usageInfo progName optSpecs
     withProgName error = progName ++ ": " ++ error
 
-parseArgs_tests = "parseArgs" ~: test
-    [ parseArgs "gsub" [] ~?= Left "gsub: not enough arguments\n"
-    , parseArgs "gsub" ["--xyzzy"] ~?= Left "gsub: unrecognized option `--xyzzy'\n"
-    , parseArgs "gsub" ["a", "b"] ~?= Left "gsub: not enough arguments\n"
-    , parseArgs "gsub" ["a", "b", "c"] ~?= Right (defaultPlan "a" "b" ["c"])
-    , parseArgs "gsub" ["a", "b", "c", "d"] ~?= Right (defaultPlan "a" "b" ["c", "d"])
-    ]
-
 -- Find the first Just in a list.
 firstJust :: [Maybe a] -> Maybe a
 firstJust = head . (++[Nothing]) . dropWhile isNothing
-
-firstJust_tests = "firstJust" ~: test
-    [ firstJust [] ~?= (Nothing :: Maybe ())
-    , firstJust [Just 1] ~?= Just 1
-    , firstJust [Just 1, Just 2] ~?= Just 1
-    , firstJust [Nothing, Just 1, Just 2] ~?= Just 1
-    ]
 
 -- Try to find a reason why a file can't be operated on.
 checkFile :: FilePath -> IO (Maybe Error)
@@ -162,16 +150,8 @@ realMain = do
           errors <- processFiles plan
           mapM_ print errors
 
-testMain = runTestText (putTextToHandle stdout False) $ test
-    [ firstJust_tests
-    , parseArgs_tests
-    ]
-
-#ifdef TEST
-main = testMain
-#else
-main = realMain
-#endif
+return []
+quickCheckMain = $quickCheckAll
 
 --(require file/sha1)
 --
