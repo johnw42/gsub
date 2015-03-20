@@ -1,6 +1,6 @@
-module MainTest (main) where
+module MainTest (test) where
 
-import Main hiding (main)
+import Main
 
 import Control.Monad
 import Control.Monad.Random
@@ -9,6 +9,8 @@ import Data.List
 import Data.Maybe
 import System.IO (stdout)
 import Test.QuickCheck
+
+import TestUtils
 
 -- My implementation.
 powerset :: [a] -> [[a]]
@@ -149,8 +151,4 @@ prop_firstJust_typical (NonEmpty items) =
         Just x -> Just x == head (dropWhile isNothing items)
 
 return []
-main =
-    $forAllProperties $ \prop -> do
-        result <- quickCheckWithResult stdArgs { chatty = False, maxDiscardRatio = 10 } prop
-        putStr $ output result
-        return result
+test = $forAllProperties quickCheckProp

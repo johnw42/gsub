@@ -14,8 +14,6 @@ import System.Console.GetOpt
 import System.Directory
 import System.Environment
 import Test.QuickCheck
-import Text.Regex.Base
-import Text.Regex.PCRE.Light
 
 type Error = String
 
@@ -153,40 +151,6 @@ realMain = do
 return []
 quickCheckMain = $quickCheckAll
 
---(require file/sha1)
---
---(module+ test
---  (require rackunit))
---
---(define current-file-name (make-parameter (void)))
---(define pattern-regexp (make-parameter (void)))
---(define warning-count (box 0))
---
---(module+ test
---  (parameterize ([current-command-line-arguments #()])
---    (check-exn
---     exn:fail?
---     parse-command-line)))
---
---;; Debugging helper.  Prints and returns a value.
---(define trace
---  (case-lambda
---    [(value)
---     (trace #f identity value)]
---    [(label-or-format-proc value)
---     (if (string? label-or-format-proc)
---         (trace label-or-format-proc identity value)
---         (trace #f label-or-format-proc value))]
---    [(label format-proc value)
---     (eprintf "~a~v\n"
---              (if (not label) "" (string-append label ": "))
---              (format-proc value))
---     value]))
---
---(define (box-update! the-box update-proc)
---  (let ([value (unbox the-box)])
---    (box-cas! value (update-proc value))))
---
 --(define (generate-patch-file-path)
 --  (trace "filename" path->string
 --   (build-path
