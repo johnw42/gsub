@@ -1,6 +1,7 @@
 module MainTest (test) where
 
 import Main
+import Plan
 
 import Control.Monad
 import Control.Monad.Random
@@ -12,133 +13,133 @@ import Test.QuickCheck
 
 import TestUtils
 
--- My implementation.
-powerset :: [a] -> [[a]]
-powerset [] = [[]]
-powerset (x:xs) = tail ++ map (x:) tail
-    where tail = powerset xs
+type FlagPart = String
+type PosArg = String
 
--- Implementation stolen from the internet.
-powerset' :: [a] -> [[a]]
-powerset' = filterM (const [False, True])
+-- Generator for arbitrary positional arguments.
+arbPosArg :: Gen PosArg
+arbPosArg = arbitrary `suchThat` (not . ("-" `isPrefixOf`))
 
--- Given two lists and a source of randomness, combine elements from the
--- two lists randomly while preserving the order of elements within each
--- list.
-shuffleMerge :: (RandomGen g) => g -> [a] -> [a] -> [a]
-shuffleMerge g as bs = evalRand (loop as (length as) bs (length bs)) g where
-    loop :: (RandomGen g) => [a] -> Int -> [a] -> Int -> Rand g [a]
-    loop as _ [] _ = return as
-    loop [] _ bs _ = return bs
-    loop (a:as) aLen (b:bs) bLen = do
-        r <- getRandomR (1, aLen + bLen)
-        if r <= aLen
-        then do rest <- loop as (aLen - 1) (b:bs) bLen
-                return $ a:rest
-        else do rest <- loop (a:as) aLen bs (bLen - 1)
-                return $ b:rest
-
-prop_shuffleMerge (Large seed) (Small leftLen) (Small rightLen) =
-    lefts == lefts' && rights == rights'
-    where
-        lefts = [1..leftLen]
-        rights = [1..rightLen]
-        shuf = shuffleMerge (mkStdGen seed) (map Left lefts) (map Right rights)
-        (lefts', rights') = partitionEithers shuf
-
-newtype PosArg = PosArg { getPosArg :: String } deriving Show
-newtype ArgList = ArgList [String] deriving Show
-
-instance Arbitrary PosArg where
-    arbitrary = do
-        s <- arbitrary `suchThat` notElem '-'
-        return $ PosArg s
-
-nonFlagString :: Gen String
-nonFlagString = arbitrary `suchThat` (not . ("-" `isPrefixOf`))
-
--- Type of positional arguments.
-newtype PosArgs = PosArgs [String] deriving Show
-instance Arbitrary PosArgs where
-    arbitrary = do
-        (Positive (Small numFiles)) <- arbitrary
-        fmap PosArgs $ vectorOf (2 + numFiles) nonFlagString
-
-prop_PosArgs (PosArgs args) = length args >= 3
-
--- Type of command-line argument lists.
-newtype Arguments = Arguments [String] deriving Show
-instance Arbitrary Arguments where
-    arbitrary = do
-       (PosArgs posArgs) <- arbitrary
-       fmap Arguments $ withFlags posArgs
+-- Generator for an arbitrary list of positional arguments.
+arbPosArgList :: Gen [PosArg]
+arbPosArgList = liftM2 (++) (vectorOf 3 arbPosArg) (listOf arbPosArg)
 
 modeFlags = ["--diff", "-D", "--no-modify", "-N", "-u", "--undo"]
+otherFlags = ["-F", "--fixed-strings"]
+shortFlagsWithArg = ["-i"]
+longFlagsWithArg = ["--backup-suffix"]
 
--- A generator for random valid flags.
-validFlagsGen :: Gen [String]
-validFlagsGen = do
-    runModeFlag <- elements modeFlags
-    patternModeFlag <- elements ["-F", "--fixed-strings"]
-    backupFileName <- listOf1 arbitrary
-    backupFlag <- elements ["-i" ++ backupFileName, "--backup-suffix=" ++ backupFileName]
-    flagSets <- shuffle $ powerset [runModeFlag, patternModeFlag, backupFlag]
-    flags <- elements flagSets
-    shuffle flags
+-- Generator for arbitrary flags.
+arbFlag :: Gen [FlagPart]
+arbFlag = do
+    modeFlag <- elements modeFlags
+    otherFlag <- elements otherFlags
+    someChar <- arbitrary
+    flagArg <- arbitrary
+    shortFlag <- elements shortFlagsWithArg
+    longFlag <- elements longFlagsWithArg
+    frequency
+        [ (2, return [modeFlag])
+        , (2, return [otherFlag])
+        , (1, return [shortFlag ++ (someChar:flagArg)])
+        , (1, return [shortFlag, flagArg])
+        , (1, return [longFlag ++ "=" ++ flagArg])
+        , (1, return [longFlag, flagArg])
+        ]
 
--- Given a generator for a list of positional arguments, randomly add some valid flags.
-withFlags :: [String] -> Gen [String]
-withFlags posArgs = do
-    flagArgs <- validFlagsGen
-    (Large seed) <- arbitrary
-    return $ shuffleMerge (mkStdGen seed) flagArgs posArgs
+prop_arbFlag_length =
+    forAll arbFlag (\flag -> length flag `elem` [1..2])
 
-prop_withFlags (PosArgs posArgs) =
-    forAll (withFlags posArgs) $ \allArgs ->
-    forAll (elements posArgs) $ \posArg ->
-    posArg `elem` allArgs
+prop_arbFlag_dash =
+    forAll arbFlag (\flag -> "-" `isPrefixOf` head flag)
 
+-- Arbitrary list of flags to apply at one time.
+arbFlagList :: Gen [[FlagPart]]
+arbFlagList = resize 3 $ listOf arbFlag
+
+-- Randomly insert flags into a list of positional arguments.
+withFlags :: [PosArg] -> [[FlagPart]] -> Gen [String]
+withFlags posArgs flags = concat `liftM` foldM insertFlag initSegments flags
+    where
+        initSegments = map (:[]) posArgs
+
+        insertFlag :: [[String]] -> [FlagPart] -> Gen [[String]]
+        insertFlag segments flag = do
+            i <- choose (0, length segments)
+            let (before, after) = splitAt i segments
+            return $ before ++ [flag] ++ after
+
+
+-- Arbitrary complete argument list.
+arbFullArgList :: Gen [String]
+arbFullArgList = do
+     (FullArgList _ _ args) <- arbFullArgList'
+     return args
+
+data FullArgList = FullArgList
+    [String]    -- Positional arguments.
+    [[String]]  -- Flags.
+    [String]    -- Combined argument list.
+    deriving Show
+
+-- Arbitrary complete argument list with separate flags and positional args.
+arbFullArgList' :: Gen FullArgList
+arbFullArgList' = do
+    posArgs <- arbPosArgList
+    flags <- arbFlagList
+    args <- posArgs `withFlags` flags
+    return $ FullArgList posArgs flags args
+    
 -- Test with too few arguments.
 prop_parseArgs_notEnough name =
-    forAll (resize 2 $ listOf nonFlagString) $ \posArgs ->
-    forAll (withFlags posArgs) $ \args ->
-    case parseArgs name args of
-        Left error -> counterexample error $ property $ error == name ++ ": not enough arguments\n"
-        Right _ -> property False
+    forAll (resize 2 $ listOf arbPosArg) $ \posArgs ->
+    forAll arbFlagList $ \flags ->
+    forAll (posArgs `withFlags` flags) $ \args ->
+    conjoin
+        [ case parseArgs name posArgs of
+            Left error -> counterexample error $ property $ error == name ++ ": not enough arguments\n"
+            Right _ -> property False
+        , property $ isLeft (parseArgs name args)
+        ]
 
 -- Test with no flags.
-prop_parseArgs_noFlags name (PosArgs args@(pattern:replacement:files)) =
+prop_parseArgs_noFlags name =
+    forAll arbPosArgList $ \(args@(pattern:replacement:files)) ->
     parseArgs name args == Right (defaultPlan pattern replacement files)
 
 -- Test with valid flags.
-prop_parseArgs_withFlags name (PosArgs (pattern:replacement:files)) =
-    forAll (withFlags $ [pattern, replacement] ++ files) $ \args ->
+prop_parseArgs_withFlags name =
+    forAll arbFullArgList' $ \(FullArgList (p:r:fs) flags args) ->
     case parseArgs name args of
         Right plan -> conjoin
-            [ filesToProcess plan == files
-            , patternString plan == pattern
-            , replacementString plan == replacement
+            [ filesToProcess plan == fs
+            , patternString plan == p
+            , replacementString plan == r
             ]
-        Left error -> counterexample error $ property False
+        Left _ -> discard
 
-prop_parseArgs_withDiff name (Arguments args) =
+prop_parseArgs_withDiff name  =
+    forAll arbFullArgList $ \args ->
     ("-D" `elem` args || "--diff" `elem` args) ==> case parseArgs name args of
-        Left _ -> True
+        Left _ -> discard
         Right plan -> planMode plan == DiffMode
 
-prop_parseArgs_withDryRun name (Arguments args) =
+prop_parseArgs_withDryRun name =
+    forAll arbFullArgList $ \args ->
     ("-N" `elem` args || "--no-modify" `elem` args) ==> case parseArgs name args of
-        Left _ -> True
+        Left _ -> discard
         Right plan -> planMode plan == DryRunMode
 
-prop_parseArgs_withUndo name (Arguments args) =
+prop_parseArgs_withUndo name =
+    forAll arbFullArgList $ \args ->
     ("-u" `elem` args || "--undo" `elem` args) ==> case parseArgs name args of
-        Left _ -> True
+        Left _ -> discard
         Right plan -> planMode plan == UndoMode
 
-prop_parseArgs_withDefaultMode name (Arguments args) =
+prop_parseArgs_withDefaultMode name =
+    forAll arbFullArgList $ \args ->
     not (any (`elem` modeFlags) args) ==> case parseArgs name args of
-        Left _ -> False
+        Left _ -> discard
         Right plan -> planMode plan == RunMode
 
 -- Test that firstJust works.
