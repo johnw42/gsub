@@ -136,7 +136,7 @@ validateFiles plan = do
 processFiles :: Plan -> IO [FileError]
 processFiles = undefined
 
-realMain = do
+main = do
   args <- getArgs
   progName <- getProgName
   case parseArgs progName args of
@@ -147,9 +147,6 @@ realMain = do
       when (null errors) $ do
           errors <- processFiles plan
           mapM_ print errors
-
-return []
-quickCheckMain = $quickCheckAll
 
 --(define (generate-patch-file-path)
 --  (trace "filename" path->string

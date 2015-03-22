@@ -2,8 +2,8 @@ module TestMain where
 
 import TestUtils
 import qualified FindReplace
-import qualified MainTest
+import qualified MainTest2
 
 main = do
-    MainTest.test
+    MainTest2.test
     FindReplace.test

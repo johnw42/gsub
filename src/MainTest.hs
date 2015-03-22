@@ -76,8 +76,8 @@ instance Arbitrary Arguments where
 modeFlags = ["--diff", "-D", "--no-modify", "-N", "-u", "--undo"]
 
 -- A generator for random valid flags.
-flagsGen :: Gen [String]
-flagsGen = do
+validFlagsGen :: Gen [String]
+validFlagsGen = do
     runModeFlag <- elements modeFlags
     patternModeFlag <- elements ["-F", "--fixed-strings"]
     backupFileName <- listOf1 arbitrary
@@ -89,7 +89,7 @@ flagsGen = do
 -- Given a generator for a list of positional arguments, randomly add some valid flags.
 withFlags :: [String] -> Gen [String]
 withFlags posArgs = do
-    flagArgs <- flagsGen
+    flagArgs <- validFlagsGen
     (Large seed) <- arbitrary
     return $ shuffleMerge (mkStdGen seed) flagArgs posArgs
 

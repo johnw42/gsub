@@ -1,27 +1,29 @@
+{-# LANGUAGE TypeSynonymInstances #-}
 module FindReplace (parseReplacement, test) where
 
 import Data.Char (isDigit)
 import Data.Text.ICU
 import TestUtils
 
+
 data ReplacementPart = LiteralPart Char | GroupPart Int deriving Eq
-newtype Replacement = Replacement { parts :: [ReplacementPart] } deriving Eq
+type Replacement = [ReplacementPart]
 
 parseReplacement :: String -> Replacement
 
-parseReplacement "" = Replacement []
+parseReplacement "" = []
 
 parseReplacement ('\\':'&':cs) = parseReplacement cs
 
 parseReplacement ('\\':'\\':cs) =
-    Replacement $ (LiteralPart '\\') : parts (parseReplacement cs)
+    (LiteralPart '\\') : parseReplacement cs
 
 parseReplacement ('\\':cs) =
     case reads cs of
-        [(num, rest)] -> Replacement $ (GroupPart num) : parts (parseReplacement rest)
+        [(num, rest)] -> (GroupPart num) : parseReplacement rest
         _ -> parseReplacement ("\\\\" ++ cs)
 
-parseReplacement (c:cs) = Replacement $ (LiteralPart c) : parts (parseReplacement cs)
+parseReplacement (c:cs) = (LiteralPart c) : parseReplacement cs
 
 -- Unit Tests
 
@@ -32,8 +34,8 @@ instance Arbitrary ReplacementPart where
         elements [LiteralPart c, GroupPart n, LiteralPart '\\']
 
 instance Show Replacement where
-    show (Replacement []) = ""
-    show (Replacement (part:parts)) = case part of
+    show [] = ""
+    show (part:parts) = case part of
         LiteralPart '\\' -> "\\\\" ++ showParts
         LiteralPart c -> c : showParts
         GroupPart n -> "\\" ++ show n ++ maybeAmp ++ showParts where
@@ -41,12 +43,10 @@ instance Show Replacement where
                 (LiteralPart digit):parts' | isDigit digit -> "\\&"
                 _ -> ""
         where
-            showParts = show (Replacement parts)
+            showParts = show parts
 
 instance Arbitrary Replacement where
-    arbitrary = do
-        parts <- listOf arbitrary
-        return $ Replacement parts
+    arbitrary = listOf arbitrary
 
 prop_parseReplacement r =
     parseReplacement (show r) == r
