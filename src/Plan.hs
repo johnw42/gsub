@@ -1,21 +1,13 @@
-module Plan (Plan(..), PlanMode(..), defaultPlan, parseArgs) where
+module Plan (Plan(..), PlanMode(..), defaultPlan, parseArgs, execParseArgs) where
 
 import Control.Monad (foldM)
+import Options.Applicative (
+    (<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure,
+    flag, flag', help, helper, idm, info, long, many, metavar,
+    optional, prefs, pure, short, strArgument, strOption, switch)
 import System.Console.GetOpt (ArgDescr(NoArg, ReqArg), ArgOrder(Permute), OptDescr(Option), getOpt, usageInfo)
 
 type Error = String
-
--- An execution plan.
-data Plan = Plan {
-  planMode :: PlanMode,
-  filesToProcess :: [FilePath],
-  patternString :: String,
-  replacementString :: String,
-  backupSuffix :: Maybe String,
-  fixedStrings :: Bool,
-  patchFilePath :: Maybe FilePath,
-  keepGoingAfterErrors :: Bool
-  } deriving (Eq, Show)
 
 data PlanMode
     = RunMode
@@ -24,6 +16,63 @@ data PlanMode
     | UndoMode
     | HelpMode
     deriving (Eq, Show)
+
+-- An execution plan.
+data Plan = Plan {
+  patternString :: String,
+  replacementString :: String,
+  filesToProcess :: [FilePath],
+  planMode :: PlanMode,
+  backupSuffix :: Maybe String,
+  fixedStrings :: Bool,
+  patchFilePath :: Maybe FilePath,
+  keepGoingAfterErrors :: Bool
+  } deriving (Eq, Show)
+
+parser :: Parser Plan
+parser = Plan
+    <$> (strArgument $
+            metavar "PATTERN" <>
+            help "regex or string to replace")
+    <*> (strArgument $
+            metavar "REPLACEMENT" <>
+            help "replacement string")
+    <*> (many $ strArgument $
+            metavar "FILES" <>
+            help "list of files to process")
+    <*> (pure RunMode
+            <|> (flag' DiffMode $
+                    short 'D' <>
+                    long "diff" <>
+                    help "Don't modify files or create a patch file, just show the diff.")
+            <|> (flag' UndoMode $
+                    short 'u' <>
+                    long "undo")
+        )
+    <*> (optional $ strOption $
+            short 'i' <>
+            long "backup-suffix" <>
+            metavar "SUFFIX")
+    <*> (switch $
+            short 'F' <>
+            long "fixed-strings")
+    <*> (optional $ strOption $
+            short 'P' <>
+            long "patch-file" <>
+            metavar "PATH")
+    <*> (switch $
+            short 'k' <>
+            long "keep-going")
+
+execParseArgs :: IO Plan
+execParseArgs = execParser (info (helper <*> parser) idm)
+
+-- Parse arguments into an error message or an execution plan.
+parseArgs :: String -> [String] -> Either String Plan
+parseArgs progName args =
+    case execParserPure (prefs idm) (info parser idm) args of
+        Success plan -> Right plan
+        _ -> Left "parse failed"
 
 defaultPlan :: String -> String -> [FilePath] -> Plan
 defaultPlan pattern replacement files = Plan
@@ -84,8 +133,8 @@ optSpecs =
   ]
 
 -- Parse arguments into an error message or an execution plan.
-parseArgs :: String -> [Error] -> Either String Plan
-parseArgs progName args
+parseArgs' :: String -> [String] -> Either String Plan
+parseArgs' progName args
   | HelpFlag `elem` flags = Left usage
   | not (null errors) = Left $ concat $ map withProgName errors
   | otherwise = case otherArgs of

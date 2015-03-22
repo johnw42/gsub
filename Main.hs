@@ -53,16 +53,12 @@ processFiles :: Plan -> IO [FileError]
 processFiles = undefined
 
 main = do
-  args <- getArgs
-  progName <- getProgName
-  case parseArgs progName args of
-    Left error -> putStr error
-    Right plan -> do
-      errors <- validateFiles plan
-      mapM_ print errors
-      when (null errors) $ do
-          errors <- processFiles plan
-          mapM_ print errors
+    plan <- execParseArgs
+    errors <- validateFiles plan
+    mapM_ print errors
+    when (null errors) $ do
+        errors <- processFiles plan
+        mapM_ print errors
 
 --(define (generate-patch-file-path)
 --  (trace "filename" path->string
