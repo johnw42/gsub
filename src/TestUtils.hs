@@ -7,6 +7,6 @@ import Test.QuickCheck
 
 quickCheckProp :: Property -> IO Result
 quickCheckProp prop = do
-    result <- quickCheckWithResult stdArgs { chatty = False, maxDiscardRatio = 10 } prop
+    result <- quickCheckWithResult stdArgs { chatty = False, maxDiscardRatio = 20 } prop
     putStr $ output result
     return result

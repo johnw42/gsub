@@ -7,14 +7,28 @@ module Main (main) where
 #endif
 
 import Plan
+import Utils
 
+import TestUtils
+import qualified FindReplace
+import qualified PlanTest
+
+import Control.Applicative ((<$>), (<*>), pure)
+import Control.Exception(bracket)
 import Control.Monad
 import Control.Monad.Maybe
 import Control.Monad.Trans
+import qualified Crypto.Hash.SHA1 as SHA1
+import qualified Data.ByteString.Char8 as B
+import qualified Data.List as L
+import Data.Char (isHexDigit)
 import Data.Maybe
+import Data.Traversable (sequenceA)
 import System.Directory
 import System.Environment
-import Test.QuickCheck
+import System.IO
+import System.Process (readProcess)
+import Text.Printf (printf)
 
 type Error = String
 
@@ -22,11 +36,6 @@ data FileError = FileError FilePath Error
 
 instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
-
-
--- Find the first Just in a list.
-firstJust :: [Maybe a] -> Maybe a
-firstJust = listToMaybe . catMaybes
 
 -- Try to find a reason why a file can't be operated on.
 checkFile :: FilePath -> IO (Maybe Error)
@@ -49,16 +58,110 @@ validateFiles plan = do
         return $ fmap (FileError path) error
     return $ catMaybes maybes
 
+transformLine :: Plan -> String -> String
+transformLine _ "" = ""
+transformLine plan line@(c:cs)
+    | pat `L.isPrefixOf` line = rep ++ transformLine plan (drop (length pat) line)
+    | otherwise = c : transformLine plan cs
+    where
+        pat = patternString plan
+        rep = replacementString plan
+
+transformFileContent :: Plan -> String -> String
+transformFileContent plan = unlines . map (transformLine plan) . lines
+
+prop_transformFileContent plan before after =
+    not (pattern `L.isInfixOf` (replacement ++ after)) ==>
+    not (pattern `L.isInfixOf` (before ++ replacement)) ==>
+        replacement `L.isInfixOf` result && not (pattern `L.isInfixOf` result)
+    where pattern = patternString plan
+          replacement = replacementString plan
+          content = before ++ pattern ++ after
+          result = transformFileContent plan content
+
+type PatchData = String
+
+runDiff :: FilePath -> FilePath -> IO PatchData
+runDiff oldPath newPath = do
+    readProcess "diff" diffArgs diffInput
+    where
+        diffInput = ""
+        diffArgs =
+            [ "-u"
+            , "--label=" ++ oldPath
+            , "--label=" ++ oldPath
+            , "--", oldPath, newPath
+            ]
+
+processSingleFile :: Plan -> FilePath -> IO PatchData
+processSingleFile plan path = do
+    tempDir <- getTemporaryDirectory
+    oldContent <- readFile path
+    bracket (openTempFile tempDir "gsub.txt") (hClose . snd) $
+        \(tempPath, tempH) -> do
+            hPutStr tempH (transformFileContent plan oldContent)
+            hFlush tempH
+            runDiff path tempPath
+
 processFiles :: Plan -> IO [FileError]
-processFiles = undefined
+processFiles plan = do
+    case patchFilePath plan of
+        Nothing   -> makePatches >> return ()
+        Just path -> makePatches >>= writePatches path
+    return []
+    where
+        makePatches :: IO [PatchData]
+        makePatches = forM (filesToProcess plan) (processSingleFile plan)
+        writePatches patchPath patchParts =
+            writeFile patchPath (concat patchParts)
+
+-- Convert a ByteString to a string of hexadecimal digits
+toHexString :: B.ByteString -> String
+toHexString = concat . map (printf "%02x") . B.unpack
+
+prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
+prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
+
+hashPlan :: Plan -> String
+hashPlan plan = 
+    toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
+    where
+        planStrings =
+            [ patternString plan
+            , replacementString plan
+            ] ++ filesToProcess plan
+
+defaultPatchFileName :: Plan -> String
+defaultPatchFileName plan = ".gsub_" ++ (hashPlan plan) ++ ".diff"
+
+withPatchFile :: Plan -> Plan
+withPatchFile plan =
+    plan { patchFilePath = Just $ maybe (defaultPatchFileName plan) id (patchFilePath plan) }
+
+prop_withPatchFile plan = isJust $ patchFilePath $ withPatchFile plan
+
+return []
+testIt = $forAllProperties quickCheckProp
+
+testMain :: IO ()
+testMain = do
+    FindReplace.test
+    testIt
+    --PlanTest.test
+    return ()
 
 main = do
-    plan <- execParseArgs
-    errors <- validateFiles plan
-    mapM_ print errors
-    when (null errors) $ do
-        errors <- processFiles plan
+    args <- getArgs
+    if null args
+    then testMain
+    else do
+        plan <- execParseArgs
+        errors <- validateFiles plan
         mapM_ print errors
+        when (null errors) $ do
+            errors <- processFiles plan
+            mapM_ print errors
+
 
 --(define (generate-patch-file-path)
 --  (trace "filename" path->string

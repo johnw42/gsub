@@ -1,10 +1,12 @@
-module Plan (Plan(..), PlanMode(..), defaultPlan, parseArgs, execParseArgs) where
+module Plan (Plan(..), PlanMode(..), parseArgs, execParseArgs) where
+
+import TestUtils hiding (Success)
 
 import Control.Monad (foldM)
 import Options.Applicative (
     (<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure,
     flag, flag', help, helper, idm, info, long, many, metavar,
-    optional, prefs, pure, short, strArgument, strOption, switch)
+    optional, prefs, pure, short, some, strArgument, strOption, switch)
 import System.Console.GetOpt (ArgDescr(NoArg, ReqArg), ArgOrder(Permute), OptDescr(Option), getOpt, usageInfo)
 
 type Error = String
@@ -14,7 +16,6 @@ data PlanMode
     | DryRunMode
     | DiffMode
     | UndoMode
-    | HelpMode
     deriving (Eq, Show)
 
 -- An execution plan.
@@ -29,40 +30,60 @@ data Plan = Plan {
   keepGoingAfterErrors :: Bool
   } deriving (Eq, Show)
 
+instance Arbitrary Plan where
+    arbitrary =
+        Plan <$> arbitrary `suchThat` ('\n' `notElem`) `suchThat` (not . null)
+             <*> arbitrary `suchThat` ('\n' `notElem`)
+             <*> arbitrary
+             <*> elements [RunMode, DryRunMode, DiffMode, UndoMode]
+             <*> arbitrary
+             <*> arbitrary
+             <*> arbitrary
+             <*> arbitrary
+
 parser :: Parser Plan
 parser = Plan
     <$> (strArgument $
-            metavar "PATTERN" <>
-            help "regex or string to replace")
+            metavar "<pattern>" <>
+            help "Regex or string to replace.")
     <*> (strArgument $
-            metavar "REPLACEMENT" <>
-            help "replacement string")
-    <*> (many $ strArgument $
-            metavar "FILES" <>
-            help "list of files to process")
+            metavar "<replacement>" <>
+            help "Replacement string.")
+    <*> (some $ strArgument $
+            metavar "<file>..." <>
+            help "List of files to process.")
     <*> (pure RunMode
-            <|> (flag' DiffMode $
-                    short 'D' <>
-                    long "diff" <>
-                    help "Don't modify files or create a patch file, just show the diff.")
-            <|> (flag' UndoMode $
-                    short 'u' <>
-                    long "undo")
+        <|> (flag' DiffMode $
+                short 'D' <>
+                long "diff" <>
+                help "Don't modify files or create a patch file, just show the diff.")
+        <|> (flag' DryRunMode $
+                short 'N' <>
+                long "no-modify" <>
+                help "Don't modify files, just create a patch file.")
+        <|> (flag' UndoMode $
+                short 'u' <>
+                long "undo" <>
+                help "Undo a previous command with the same arguments.")
         )
     <*> (optional $ strOption $
             short 'i' <>
             long "backup-suffix" <>
-            metavar "SUFFIX")
+            metavar "<suffix>" <>
+            help "Create backup file by appending suffix (like perl -i).")
     <*> (switch $
             short 'F' <>
-            long "fixed-strings")
+            long "fixed-strings" <>
+            help "Treat <pattern> and <replacement> as literal strings (like grep -F).")
     <*> (optional $ strOption $
             short 'P' <>
             long "patch-file" <>
-            metavar "PATH")
+            metavar "<path>" <>
+            help "Set the backup file to create.")
     <*> (switch $
             short 'k' <>
-            long "keep-going")
+            long "keep-going" <>
+            help "Don't stop after encountering errors.")
 
 execParseArgs :: IO Plan
 execParseArgs = execParser (info (helper <*> parser) idm)
@@ -73,75 +94,3 @@ parseArgs progName args =
     case execParserPure (prefs idm) (info parser idm) args of
         Success plan -> Right plan
         _ -> Left "parse failed"
-
-defaultPlan :: String -> String -> [FilePath] -> Plan
-defaultPlan pattern replacement files = Plan
-    { planMode = RunMode
-    , filesToProcess = files
-    , patternString = pattern
-    , replacementString = replacement
-    , backupSuffix = Nothing
-    , fixedStrings = False
-    , patchFilePath = Nothing
-    , keepGoingAfterErrors = False
-    }
-
--- Convert a series of command-line parameters into an execution plan.
-makePlan :: String -> String -> [String] -> [Flag] -> Either String Plan
-makePlan pattern replacement files flags = foldM applyFlag startingPlan flags
-    where
-        startingPlan = defaultPlan pattern replacement files
-        applyFlag :: Plan -> Flag -> Either String Plan
-        applyFlag plan flag = case flag of
-            BackupSuffixFlag suffix -> Right plan { backupSuffix = Just suffix }
-            FixedStringsFlag -> Right plan { fixedStrings = True }
-            PatchFileFlag path -> Right plan { patchFilePath = Just path }
-            UndoFlag | runMode -> Right plan { planMode = UndoMode }
-            DiffFlag | runMode -> Right plan { planMode = DiffMode }
-            NoModifyFlag | runMode -> Right plan { planMode = DryRunMode }
-            _ -> Left "can't construct plan"
-            where runMode = planMode plan == RunMode
-
--- Abstract set of possible flags.
-data Flag
-  = HelpFlag
-  | BackupSuffixFlag String
-  | FixedStringsFlag
-  | PatchFileFlag FilePath
-  | UndoFlag
-  | DiffFlag
-  | NoModifyFlag
-  deriving Eq
-
--- Define the options than can be parsed into flags.
-optSpecs :: [OptDescr Flag]
-optSpecs =
-  [ Option "h" ["help"] (NoArg HelpFlag)
-    "Print help message."
-  , Option "i" ["backup-suffix"] (ReqArg BackupSuffixFlag "SUFFIX")
-    "Create backup file by appending suffix (like perl -i)."
-  , Option "F" ["fixed-strings"] (NoArg FixedStringsFlag)
-    "Treat <pattern> and <replacement> as literal strings (like grep -F)."
-  , Option "P" ["patch-file"] (ReqArg PatchFileFlag "FILE")
-    "Set the backup file to create."
-  , Option "u" ["undo"] (NoArg UndoFlag)
-    "Undo a previous command with the same arguments."
-  , Option "N" ["no-modify"] (NoArg NoModifyFlag)
-    "Don't modify files, just create a patch file."
-  , Option "D" ["diff"] (NoArg DiffFlag)
-    "Don't modify files or create a patch file, just show the diff."
-  ]
-
--- Parse arguments into an error message or an execution plan.
-parseArgs' :: String -> [String] -> Either String Plan
-parseArgs' progName args
-  | HelpFlag `elem` flags = Left usage
-  | not (null errors) = Left $ concat $ map withProgName errors
-  | otherwise = case otherArgs of
-                  (pattern:replacement:file:files) ->
-                      makePlan pattern replacement (file:files) flags
-                  _ -> Left $ withProgName "not enough arguments\n"
-  where
-    (flags, otherArgs, errors) = getOpt Permute optSpecs args
-    usage = usageInfo progName optSpecs
-    withProgName error = progName ++ ": " ++ error
