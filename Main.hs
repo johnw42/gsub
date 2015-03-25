@@ -71,6 +71,7 @@ transformFileContent :: Plan -> String -> String
 transformFileContent plan = unlines . map (transformLine plan) . lines
 
 prop_transformFileContent plan before after =
+    within 100000 $
     not (pattern `L.isInfixOf` (replacement ++ after)) ==>
     not (pattern `L.isInfixOf` (before ++ replacement)) ==>
         replacement `L.isInfixOf` result && not (pattern `L.isInfixOf` result)

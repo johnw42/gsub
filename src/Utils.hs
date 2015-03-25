@@ -3,10 +3,11 @@ module Utils where
 import TestUtils
 
 import Data.Maybe (catMaybes, isNothing, listToMaybe)
+import Data.Monoid (First(..), mconcat)
 
 -- Find the first Just in a list.
 firstJust :: [Maybe a] -> Maybe a
-firstJust = listToMaybe . catMaybes
+firstJust = getFirst . mconcat . map First
 
 -- Test that firstJust works.
 prop_firstJust_empty = once $ isNothing $ firstJust []
