@@ -1,7 +1,10 @@
 module MainTest (test) where
 
-import Main
+import Main hiding (test)
 import Plan
+import Utils hiding (test)
+
+import TestUtils
 
 import Control.Monad
 import Control.Monad.Random
@@ -9,9 +12,6 @@ import Data.Either
 import Data.List
 import Data.Maybe
 import System.IO (stdout)
-import Test.QuickCheck
-
-import TestUtils
 
 type FlagPart = String
 type PosArg = String
@@ -152,4 +152,4 @@ prop_firstJust_typical (NonEmpty items) =
         Just x -> Just x == head (dropWhile isNothing items)
 
 return []
-test = $forAllProperties quickCheckProp
+test = $forAllProperties quickCheckResult

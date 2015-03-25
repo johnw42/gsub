@@ -111,14 +111,20 @@ processFiles plan = do
             writeFile patchPath (concat patchParts)
 
 return []
-testIt = $forAllProperties quickCheckProp
+localTest = $forAllProperties quickCheckResult
 
 testMain :: IO ()
 testMain = do
-    FindReplace.test
-    testIt
+    results <- sequence
+        [ FindReplace.test
+        , localTest
+        --, PlanTest.test
+        ]
+    if and results
+    then putStrLn "All tests passed!"
+    else putStrLn "Something failed."
     --PlanTest.test
-    return ()
+    --return ()
 
 main = do
     args <- getArgs

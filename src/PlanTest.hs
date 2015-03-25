@@ -2,15 +2,14 @@ module PlanTest (test) where
 
 import Plan
 
+import TestUtils
+
 import Control.Monad
 import Control.Monad.Random
 import Data.Either
 import Data.List
 import Data.Maybe
 import System.IO (stdout)
-import Test.QuickCheck
-
-import TestUtils
 
 type FlagPart = String
 type PosArg = String
@@ -146,4 +145,4 @@ prop_parseArgs_withDefaultMode name =
         Right plan -> planMode plan == RunMode
 
 return []
-test = $forAllProperties quickCheckProp
+test = $forAllProperties quickCheckResult

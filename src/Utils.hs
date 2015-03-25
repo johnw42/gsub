@@ -20,4 +20,4 @@ prop_firstJust_typical (NonEmpty items) =
 
 
 return []
-test = $forAllProperties quickCheckProp
+test = $forAllProperties quickCheckResult

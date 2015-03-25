@@ -1,4 +1,4 @@
-module Plan (Plan(..), PlanMode(..), parseArgs, execParseArgs) where
+module Plan (Plan(..), PlanMode(..), defaultPlan, parseArgs, execParseArgs) where
 
 import Utils
 
@@ -6,13 +6,13 @@ import TestUtils hiding (Success)
 
 import Data.Char (isHexDigit)
 import qualified Data.List as L
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromJust)
 import Control.Monad (foldM)
 import qualified Crypto.Hash.SHA1 as SHA1
 import qualified Data.ByteString.Char8 as B
 import Options.Applicative (
     (<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure,
-    flag, flag', help, helper, idm, info, long, many, metavar,
+    flag, flag', getParseResult, help, helper, idm, info, long, many, metavar,
     optional, prefs, pure, short, some, strArgument, strOption, switch)
 import Text.Printf (printf)
 import System.Console.GetOpt (ArgDescr(NoArg, ReqArg), ArgOrder(Permute), OptDescr(Option), getOpt, usageInfo)
@@ -104,10 +104,11 @@ execParseArgs = execParser (info (helper <*> parser) idm)
 -- Parse arguments into an error message or an execution plan.
 parseArgs :: String -> [String] -> Either String Plan
 parseArgs progName args =
-    case execParserPure (prefs idm) (info parser idm) args of
-        Success plan -> Right plan
-        _ -> Left "parse failed"
+    maybe (Left "parse faied") Right $
+        getParseResult $ execParserPure (prefs idm) (info parser idm) args
 
+defaultPlan p r fs =
+    let (Right plan) = parseArgs "gsub" (p:r:fs) in plan
 
 -- Convert a ByteString to a string of hexadecimal digits
 toHexString :: B.ByteString -> String

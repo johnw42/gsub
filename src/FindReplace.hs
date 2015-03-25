@@ -3,6 +3,7 @@ module FindReplace (parseReplacement, test) where
 import Data.Char (isDigit)
 import Data.List (inits, tails)
 import Data.Text.ICU
+import Numeric (readDec)
 import TestUtils
 
 
@@ -10,18 +11,16 @@ data ReplacementPart = LiteralPart String | GroupPart Int deriving (Show, Eq)
 type Replacement = [ReplacementPart]
 
 parseReplacement :: String -> Replacement
-
 parseReplacement "" = []
-
+parseReplacement "\\" = []  -- Yuck!
 parseReplacement ('\\':'&':cs) = parseReplacement cs
-
 parseReplacement ('\\':'\\':cs) =
     mergeLiterals $ LiteralPart "\\" : parseReplacement cs
-
-parseReplacement ('\\':cs) =
-    case reads cs of
-        [(num, rest)] -> GroupPart num : parseReplacement rest
-        _ -> parseReplacement ("\\\\" ++ cs)
+parseReplacement ('\\':c:cs)
+    | isDigit c = case readDec (c:cs) of
+        [(n, cs')] -> GroupPart n : parseReplacement cs'
+        x -> error $ "parsed " ++ show (c:cs) ++ " as " ++ show x
+    | otherwise = mergeLiterals $ (LiteralPart "\\") : parseReplacement (c:cs)
 
 parseReplacement (c:cs) = mergeLiterals $ LiteralPart [c] : parseReplacement cs
 
@@ -58,6 +57,8 @@ instance Arbitrary ReplacementPart where
         s <- arbitrary
         (Positive (Small n)) <- arbitrary
         elements [LiteralPart s, GroupPart n, LiteralPart "\\"]
+    shrink (LiteralPart s) = map LiteralPart (shrink s)
+    shrink (GroupPart n) = map GroupPart [n-1, n-2 .. 0]
 
 showReplacement = concatMap showPart . tails
     where
@@ -71,11 +72,8 @@ showReplacement = concatMap showPart . tails
         showLiteralChar '\\' = "\\\\"
         showLiteralChar c = [c]
 
-instance Arbitrary Replacement where
-    arbitrary = listOf arbitrary
-
 prop_parseReplacement r =
-    within 100000 $
+    within 1000000 $
     let r' = mergeLiterals r
         shown = showReplacement r'
         parsed = parseReplacement shown
@@ -84,5 +82,8 @@ prop_parseReplacement r =
        counterexample ("parsed " ++ show parsed) $
        parsed == r'
 
+prop_parseReplacement0 =
+    apEq parseReplacement "\\0.1" [GroupPart 0,LiteralPart ".1"]
+
 return []
-test = $forAllProperties quickCheckProp
+test = $forAllProperties quickCheckResult
