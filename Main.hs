@@ -18,17 +18,13 @@ import Control.Exception(bracket)
 import Control.Monad
 import Control.Monad.Maybe
 import Control.Monad.Trans
-import qualified Crypto.Hash.SHA1 as SHA1
-import qualified Data.ByteString.Char8 as B
 import qualified Data.List as L
-import Data.Char (isHexDigit)
 import Data.Maybe
 import Data.Traversable (sequenceA)
 import System.Directory
 import System.Environment
 import System.IO
 import System.Process (readProcess)
-import Text.Printf (printf)
 
 type Error = String
 
@@ -106,40 +102,13 @@ processSingleFile plan path = do
 
 processFiles :: Plan -> IO [FileError]
 processFiles plan = do
-    case patchFilePath plan of
-        Nothing   -> makePatches >> return ()
-        Just path -> makePatches >>= writePatches path
+    makePatches >>= writePatches (patchFilePath plan)
     return []
     where
         makePatches :: IO [PatchData]
         makePatches = forM (filesToProcess plan) (processSingleFile plan)
         writePatches patchPath patchParts =
             writeFile patchPath (concat patchParts)
-
--- Convert a ByteString to a string of hexadecimal digits
-toHexString :: B.ByteString -> String
-toHexString = concat . map (printf "%02x") . B.unpack
-
-prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
-prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
-
-hashPlan :: Plan -> String
-hashPlan plan = 
-    toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
-    where
-        planStrings =
-            [ patternString plan
-            , replacementString plan
-            ] ++ filesToProcess plan
-
-defaultPatchFileName :: Plan -> String
-defaultPatchFileName plan = ".gsub_" ++ (hashPlan plan) ++ ".diff"
-
-withPatchFile :: Plan -> Plan
-withPatchFile plan =
-    plan { patchFilePath = Just $ maybe (defaultPatchFileName plan) id (patchFilePath plan) }
-
-prop_withPatchFile plan = isJust $ patchFilePath $ withPatchFile plan
 
 return []
 testIt = $forAllProperties quickCheckProp
