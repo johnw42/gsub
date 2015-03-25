@@ -66,7 +66,6 @@ instance Monad PropValue where
 (.==.) :: (Eq a) => PropValue a -> PropValue a -> Property
 (PropValue _ a) .==. (PropValue _ b) = property $ a == b
 
-
 (=?) :: (Eq a, Show a) => PropValue a -> PropValue a -> Property
 a =? b = annotate collect a .==. annotate collect b
 

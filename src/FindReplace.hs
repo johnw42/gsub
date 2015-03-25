@@ -33,6 +33,7 @@ mergeLiterals (part : parts) = part : mergeLiterals parts
 prop_mergeLiterals1 pa pb =
     counterexample (show merged) $
     merged == case parts of
+        [LiteralPart "", LiteralPart ""] -> []
         [LiteralPart "", other] -> [other]
         [other, LiteralPart ""] -> [other]
         [LiteralPart a, LiteralPart b] -> [LiteralPart (a ++ b)]
@@ -45,6 +46,7 @@ prop_mergeLiterals2 parts =
     all check (tails $ mergeLiterals parts)
     where
         check [] = True
+        check [LiteralPart ""] = False
         check [_] = True
         check (a:b:_) = not (isLiteral a && isLiteral b)
         isLiteral (LiteralPart _) = True
@@ -73,7 +75,6 @@ showReplacement = concatMap showPart . tails
         showLiteralChar c = [c]
 
 prop_parseReplacement r =
-    within 1000000 $
     let r' = mergeLiterals r
         shown = showReplacement r'
         parsed = parseReplacement shown
@@ -86,4 +87,7 @@ prop_parseReplacement0 =
     apEq parseReplacement "\\0.1" [GroupPart 0,LiteralPart ".1"]
 
 return []
-test = $forAllProperties quickCheckResult
+test = do
+--    quickCheckWithResult stdArgs { maxSuccess = 10000 }
+--        $ forAll arbitrary prop_parseReplacement
+    $forAllProperties quickCheckResult
