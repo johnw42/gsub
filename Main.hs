@@ -18,13 +18,17 @@ import Control.Exception(bracket)
 import Control.Monad
 import Control.Monad.Maybe
 import Control.Monad.Trans
+import qualified Crypto.Hash.SHA1 as SHA1
+import qualified Data.ByteString.Char8 as B
 import qualified Data.List as L
+import Data.Char (isHexDigit)
 import Data.Maybe
 import Data.Traversable (sequenceA)
 import System.Directory
 import System.Environment
 import System.IO
 import System.Process (readProcess)
+import Text.Printf (printf)
 
 type Error = String
 
@@ -49,7 +53,7 @@ checkFile path = liftM firstJust $ sequence $ map ($ path) checks
 
 validateFiles :: Plan -> IO [FileError]
 validateFiles plan = do
-    maybes <- forM (filesToProcess plan) $ \path -> do
+    maybes <- forM (filesToProcess $ options plan) $ \path -> do
         error <- checkFile path
         return $ fmap (FileError path) error
     return $ catMaybes maybes
@@ -60,19 +64,18 @@ transformLine plan line@(c:cs)
     | pat `L.isPrefixOf` line = rep ++ transformLine plan (drop (length pat) line)
     | otherwise = c : transformLine plan cs
     where
-        pat = patternString plan
-        rep = replacementString plan
+        pat = patternString $ options plan
+        rep = replacementString $ options plan
 
 transformFileContent :: Plan -> String -> String
 transformFileContent plan = unlines . map (transformLine plan) . lines
 
 prop_transformFileContent plan before after =
-    within 100000 $
     not (pattern `L.isInfixOf` (replacement ++ after)) ==>
     not (pattern `L.isInfixOf` (before ++ replacement)) ==>
         replacement `L.isInfixOf` result && not (pattern `L.isInfixOf` result)
-    where pattern = patternString plan
-          replacement = replacementString plan
+    where pattern = patternString $ options plan
+          replacement = replacementString $ options plan
           content = before ++ pattern ++ after
           result = transformFileContent plan content
 
@@ -102,29 +105,42 @@ processSingleFile plan path = do
 
 processFiles :: Plan -> IO [FileError]
 processFiles plan = do
-    makePatches >>= writePatches (patchFilePath plan)
-    return []
+    makePatches >>= (writePatches $ patchFilePath plan)
+    return []  -- TODO
     where
         makePatches :: IO [PatchData]
-        makePatches = forM (filesToProcess plan) (processSingleFile plan)
+        makePatches = forM (filesToProcess $ options plan) (processSingleFile plan)
         writePatches patchPath patchParts =
             writeFile patchPath (concat patchParts)
 
+-- Convert a ByteString to a string of hexadecimal digits
+toHexString :: B.ByteString -> String
+toHexString = concat . map (printf "%02x") . B.unpack
+
+prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
+prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
+
+hashOptions :: Options -> String
+hashOptions plan = 
+    toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
+    where
+        planStrings =
+            [ patternString plan
+            , replacementString plan
+            ] ++ filesToProcess plan
+
+defaultPatchFileName :: Options -> String
+defaultPatchFileName opts = ".gsub_" ++ (hashOptions opts) ++ ".diff"
+
 return []
-localTest = $forAllProperties quickCheckResult
+testIt = $forAllProperties quickCheckResult
 
 testMain :: IO ()
 testMain = do
-    results <- sequence
-        [ FindReplace.test
-        , localTest
-        --, PlanTest.test
-        ]
-    if and results
-    then putStrLn "All tests passed!"
-    else putStrLn "Something failed."
+    FindReplace.test
+    testIt
     --PlanTest.test
-    --return ()
+    return ()
 
 main = do
     args <- getArgs

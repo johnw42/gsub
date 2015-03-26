@@ -102,10 +102,10 @@ prop_parseArgs_notEnough name =
 prop_parseArgs_noFlags name =
     forAll arbPosArgList $ \(args@(p:r:fs)) ->
     case parseArgs name args of
-        Right plan -> conjoin
-            [ filesToProcess plan == fs
-            , patternString plan == p
-            , replacementString plan == r
+        Right opts -> conjoin
+            [ filesToProcess opts == fs
+            , patternString opts == p
+            , replacementString opts == r
             ]
         Left _ -> property False
 
