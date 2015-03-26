@@ -111,6 +111,7 @@ testIt = $forAllProperties quickCheckResult
 
 testMain :: IO ()
 testMain = do
+    Plan.test
     FindReplace.test
     testIt
     --OptionsTest.test
@@ -121,119 +122,16 @@ main = do
     if null args
     then testMain
     else do
-        plan <- execParseArgsToPlan
-        errors <- validateFiles plan
-        mapM_ print errors
-        when (null errors) $ do
-            errors <- processFiles plan
-            mapM_ print errors
+        planOrError <- execParseArgsToPlan
+        case planOrError of
+            Left error -> putStrLn error
+            Right plan -> do
+                errors <- validateFiles plan
+                mapM_ print errors
+                when (null errors) $ do
+                    errors <- processFiles plan
+                    mapM_ print errors
 
-
---(define (generate-patch-file-path)
---  (trace "filename" path->string
---   (build-path
---    (find-system-path 'temp-dir)
---    (string-append
---     "gsub."
---     (sha1 (open-input-string (generate-patch-file-spec)))))))
---
---(define (generate-patch-file-spec)
---  (trace "path-spec"
---   (format "~v ~v ~v"
---           (sort
---            (map (compose path->string path->complete-path)
---                 (files-to-process))
---            string<?)
---           (pattern-string)
---           (replacement-string))))
---
---;; (define (init-pattern-and-replacement pattern replacement fixed-strings? reverse?)
---;;   (cond
---;;     [reverse?
---;;      (init-pattern-and-replacement replacement pattern #t #f)]
---
---;;     [fixed-strings?
---;;      (init-pattern-and-replacement (regexp-quote pattern)
---;;                                    (regexp-replace-quote replacement)
---;;                                    #f #f)]
---
---;;     [else
---;;      (pattern-string pattern)
---;;      (replacement-string replacement)]))
---
---
---;; Returns #f if |path| is able to be update, or a warning string if
---;; not.
---(define (file-warning path)
---  (let ([perms (delay (file-or-directory-permissions path))])
---    (cond
---      [(directory-exists? path)
---       "is a directory"]
---      [(not (file-exists? path))
---       "no such file"]
---      [(not (memq 'read (force perms)))
---       "file is not readable"]
---      [(not (memq 'write (force perms)))
---       "file is not writable"]
---      [else #f])))
---
---;; Check all paths in |paths| for errors that will prevent them from
---;; being updated.  Prints a warning for files that can't be updated,
---;; and returns a list of files that are usable.
---(define (check-files paths)
---  (append*
---   (for/list ([path paths])
---     (match (file-warning path)
---       [#f (list path)]
---       [warning (warn-file path warning)]))))
---
---;; Raises an error if execution should terminate because of warnings.
---(define (check-errors)
---  (when (and (positive? (unbox warning-count))
---             (not (keep-going-after-errors?)))
---    (raise-user-error "aborting because of warnings")))
---
---;; (define (call-with-atomic-output-file filename proc)
---;;   (define-values (dir-path last-part must-be-dir?)
---;;     (split-path (path->complete-path filename)))
---;;   (define temp-file-path
---;;     (make-temporary-file
---;;      (string-append (path->string last-part) ".~a")))
---;;   (dynamic-wind
---;;     (lambda ())
---;;     (lambda ()
---;;       (with-handlers ([exn? (lambda (e)
---;;                               (delete-file temp-file-path))])
---;;         (call-with-output-file temp-file-path proc
---;;           #:mode 'text #:exists 'must-truncate)))
---;;     (lambda ()
---;;       (when (file-exists? temp-file-path)
---;;         (rename-file ))))
---;;   )
---
---(define (transform-file-content text)
---  (string-replace text (pattern-regexp) (replacement-string)))
---
---(define (run-diff old-path new-path)
---  (define label (path->string old-path))
---  (match-define-values
---   (proc proc-stdout proc-stdin #f)
---   (subprocess
---    #f
---    #f
---    (current-error-port)
---    (find-executable-path "diff")
---    "-u"
---    "--label" label
---    "--label" label
---    "--"
---    (path->string old-path)
---    (path->string new-path)))
---  (close-output-port proc-stdin)
---  (define diff-data (port->string proc-stdout))
---  (displayln diff-data)
---  (close-input-port proc-stdout))
---
 --(define (copy-with-backup from-path to-path)
 --  ;; Copies a file, creating backups according to the |backup-suffix|
 --  ;; parameter.
@@ -277,22 +175,3 @@ main = do
 --          (error "copy failed"))))
 --    (lambda ()
 --      (delete-file temp-file-path))))
---
---(define (process-files paths)
---  (for ([path paths])
---    (parameterize ([current-file-name path])
---      (process-one-file path))))
---
---;; Prints a warning about a file an increments the warning counter.
---(define (warn-file path message)
---  (eprintf "~a: ~a\n" path message)
---  (box-update! warning-count add1))
---
---(define (replace-in-files paths)
---  (let ([paths (check-files paths)])
---    (check-errors)
---    (process-files paths))
---  (void))
---
---(module+ main
---  (replace-in-files (parse-command-line)))
