@@ -1,7 +1,7 @@
 module MainTest (test) where
 
 import Main hiding (test)
-import Plan
+import Options
 import Utils hiding (test)
 
 import TestUtils
@@ -105,7 +105,7 @@ prop_parseArgs_notEnough name =
 -- Test with no flags.
 prop_parseArgs_noFlags name =
     forAll arbPosArgList $ \(args@(pattern:replacement:files)) ->
-    parseArgs name args == Right (defaultPlan pattern replacement files)
+    parseArgs name args == Right (defaultOpts pattern replacement files)
 
 -- Test with valid flags.
 prop_parseArgs_withFlags name =

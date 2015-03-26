@@ -1,17 +1,14 @@
 {-# LANGUAGE CPP, TemplateHaskell #-}
 
-#ifdef TEST
-module Main where
-#else
 module Main (main) where
-#endif
 
+import Options
 import Plan
 import Utils
 
 import TestUtils
 import qualified FindReplace
-import qualified PlanTest
+import qualified OptionsTest
 
 import Control.Applicative ((<$>), (<*>), pure)
 import Control.Exception(bracket)
@@ -113,13 +110,6 @@ processFiles plan = do
         writePatches patchPath patchParts =
             writeFile patchPath (concat patchParts)
 
--- Convert a ByteString to a string of hexadecimal digits
-toHexString :: B.ByteString -> String
-toHexString = concat . map (printf "%02x") . B.unpack
-
-prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
-prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
-
 hashOptions :: Options -> String
 hashOptions plan = 
     toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
@@ -139,7 +129,7 @@ testMain :: IO ()
 testMain = do
     FindReplace.test
     testIt
-    --PlanTest.test
+    --OptionsTest.test
     return ()
 
 main = do
@@ -147,7 +137,7 @@ main = do
     if null args
     then testMain
     else do
-        plan <- execParseArgs
+        plan <- makePlan `liftM` execParseArgs
         errors <- validateFiles plan
         mapM_ print errors
         when (null errors) $ do

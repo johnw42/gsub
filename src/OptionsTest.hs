@@ -1,6 +1,6 @@
-module PlanTest (test) where
+module OptionsTest (test) where
 
-import Plan
+import Options
 
 import TestUtils
 
