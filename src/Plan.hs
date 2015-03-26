@@ -1,7 +1,8 @@
 module Plan where
 
 import FindReplace
-import Options
+import Options hiding (patternString)
+import qualified Options as O
 
 import TestUtils
 
@@ -26,20 +27,21 @@ data Plan = Plan {
 instance Show Plan where
     show _ = "<Plan>"
 
-
 instance Arbitrary Plan where
     arbitrary = makePlan `liftM` arbitrary
+
+patternString = O.patternString . options
 
 makePlan opts = plan
     where
         plan = Plan opts
-            (defaultPatchFileName opts)
+            (defaultPatchFileName plan)
             (if fixedStrings opts
                 then literalReplacement (replacementString opts)
                 else parseReplacement (replacementString opts))
             (if fixedStrings opts
                 then Left "internal error"
-                else compile (patternString opts))
+                else compile (patternString plan))
         compile pat = makeRegexOptsM compOpt execOpt pat
         compOpt = if ignoreCase opts
             then compUTF8 .|. compCaseless
@@ -53,14 +55,14 @@ toHexString = concat . map (printf "%02x") . B.unpack
 prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
 prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
 
-hashPlan :: Options -> String
-hashPlan plan = 
+hashOptions :: Plan -> String
+hashOptions plan = 
     toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
     where
         planStrings =
             [ patternString plan
-            , replacementString plan
-            ] ++ filesToProcess plan
+            , replacementString $ options plan
+            ] ++ (filesToProcess $ options plan)
 
-defaultPatchFileName :: Options -> String
-defaultPatchFileName plan = ".gsub_" ++ (hashPlan plan) ++ ".diff"
+defaultPatchFileName :: Plan -> String
+defaultPatchFileName plan = ".gsub_" ++ (hashOptions plan) ++ ".diff"

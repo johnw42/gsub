@@ -2,7 +2,7 @@
 
 module Main (main) where
 
-import Options
+import Options hiding (patternString)
 import Plan
 import Utils
 
@@ -15,10 +15,7 @@ import Control.Exception(bracket)
 import Control.Monad
 import Control.Monad.Maybe
 import Control.Monad.Trans
-import qualified Crypto.Hash.SHA1 as SHA1
-import qualified Data.ByteString.Char8 as B
-import qualified Data.List as L
-import Data.Char (isHexDigit)
+import Data.List (isInfixOf, isPrefixOf)
 import Data.Maybe
 import Data.Traversable (sequenceA)
 import System.Directory
@@ -58,20 +55,20 @@ validateFiles plan = do
 transformLine :: Plan -> String -> String
 transformLine _ "" = ""
 transformLine plan line@(c:cs)
-    | pat `L.isPrefixOf` line = rep ++ transformLine plan (drop (length pat) line)
+    | pat `isPrefixOf` line = rep ++ transformLine plan (drop (length pat) line)
     | otherwise = c : transformLine plan cs
     where
-        pat = patternString $ options plan
+        pat = patternString plan
         rep = replacementString $ options plan
 
 transformFileContent :: Plan -> String -> String
 transformFileContent plan = unlines . map (transformLine plan) . lines
 
 prop_transformFileContent plan before after =
-    not (pattern `L.isInfixOf` (replacement ++ after)) ==>
-    not (pattern `L.isInfixOf` (before ++ replacement)) ==>
-        replacement `L.isInfixOf` result && not (pattern `L.isInfixOf` result)
-    where pattern = patternString $ options plan
+    not (pattern `isInfixOf` (replacement ++ after)) ==>
+    not (pattern `isInfixOf` (before ++ replacement)) ==>
+        replacement `isInfixOf` result && not (pattern `isInfixOf` result)
+    where pattern = patternString plan
           replacement = replacementString $ options plan
           content = before ++ pattern ++ after
           result = transformFileContent plan content
@@ -109,18 +106,6 @@ processFiles plan = do
         makePatches = forM (filesToProcess $ options plan) (processSingleFile plan)
         writePatches patchPath patchParts =
             writeFile patchPath (concat patchParts)
-
-hashOptions :: Options -> String
-hashOptions plan = 
-    toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
-    where
-        planStrings =
-            [ patternString plan
-            , replacementString plan
-            ] ++ filesToProcess plan
-
-defaultPatchFileName :: Options -> String
-defaultPatchFileName opts = ".gsub_" ++ (hashOptions opts) ++ ".diff"
 
 return []
 testIt = $forAllProperties quickCheckResult
