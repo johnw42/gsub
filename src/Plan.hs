@@ -1,9 +1,11 @@
 module Plan (Plan(..), PlanMode(..), defaultPlan, parseArgs, execParseArgs) where
 
+import FindReplace
 import Utils
 
 import TestUtils hiding (Success)
 
+import Data.Bits ((.|.))
 import Data.Char (isHexDigit)
 import qualified Data.List as L
 import Data.Maybe (isJust, fromJust)
@@ -15,7 +17,8 @@ import Options.Applicative (
     flag, flag', getParseResult, help, helper, idm, info, long, many, metavar,
     optional, prefs, pure, short, some, strArgument, strOption, switch)
 import Text.Printf (printf)
-import System.Console.GetOpt (ArgDescr(NoArg, ReqArg), ArgOrder(Permute), OptDescr(Option), getOpt, usageInfo)
+import Text.Regex.Base (makeRegexOptsM)
+import Text.Regex.PCRE.String (Regex, compUTF8, compCaseless, execBlank)
 
 type Error = String
 
@@ -28,6 +31,7 @@ data PlanMode
 
 -- An execution plan.
 data Plan = Plan {
+  -- Command-line options:
   patternString :: String,
   replacementString :: String,
   filesToProcess :: [FilePath],
@@ -36,12 +40,34 @@ data Plan = Plan {
   fixedStrings :: Bool,
   specifiedPatchFilePath :: Maybe FilePath,
   keepGoingAfterErrors :: Bool,
-  patchFilePath :: FilePath
+  ignoreCase :: Bool,
+  -- Computed values:
+  patchFilePath :: FilePath,
+  replacement :: Replacement,
+  patternRegex :: Either String Regex
   } deriving (Eq, Show)
 
-makePlan a b c d e f g h = plan
+instance Eq Regex where
+    _ == _ = True
+
+instance Show Regex where
+    show _ = "<regex>"
+
+makePlan pat rep files mode b ff pp k i = plan
     where
-        plan = Plan a b c d e f g h (defaultPatchFileName plan)
+        plan = Plan pat rep files mode b ff pp k i
+            (defaultPatchFileName plan)
+            (if fixedStrings plan
+                then literalReplacement (replacementString plan)
+                else parseReplacement (replacementString plan))
+            (if fixedStrings plan
+                then Left "internal error"
+                else compile (patternString plan))
+        compile pat = makeRegexOptsM compOpt execOpt pat
+        compOpt = if ignoreCase plan
+            then compUTF8 .|. compCaseless
+            else compUTF8
+        execOpt = execBlank
 
 instance Arbitrary Plan where
     arbitrary = makePlan 
@@ -49,6 +75,7 @@ instance Arbitrary Plan where
         <*> arbitrary `suchThat` ('\n' `notElem`)
         <*> arbitrary
         <*> elements [RunMode, DryRunMode, DiffMode, UndoMode]
+        <*> arbitrary
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
@@ -80,7 +107,8 @@ parser = makePlan
                 help "Undo a previous command with the same arguments.")
         )
     <*> (optional $ strOption $
-            short 'i' <>
+            -- TODO: Is this even useful?
+            short 'b' <>
             long "backup-suffix" <>
             metavar "<suffix>" <>
             help "Create backup file by appending suffix (like perl -i).")
@@ -94,9 +122,14 @@ parser = makePlan
             metavar "<path>" <>
             help "Set the backup file to create.")
     <*> (switch $
+            -- TODO: Is this even useful?
             short 'k' <>
             long "keep-going" <>
             help "Don't stop after encountering errors.")
+    <*> (switch $
+            short 'i' <>
+            long "ignore-case" <>
+            help "Ignore case when matching.")
 
 execParseArgs :: IO Plan
 execParseArgs = execParser (info (helper <*> parser) idm)

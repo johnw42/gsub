@@ -11,7 +11,9 @@ environment: ghc-7.8-stable-14.09
 auto-hidden: []
 cabal-file: project.cabal
 version: 1
-extra-packages: ! 'Hackage: QuickCheck 2.8'
+extra-packages: ! 'Hackage: QuickCheck
+
+  Hackage: regex-pcre 0.94.4'
 ghc-args:
 - -DTEST
 excluded-modules: []

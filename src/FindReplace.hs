@@ -1,15 +1,18 @@
-module FindReplace (parseReplacement, test) where
+module FindReplace (Replacement, literalReplacement, parseReplacement, test) where
+
+import TestUtils
 
 import Control.Monad (liftM)
 import Data.Char (isDigit)
 import Data.List (inits, tails)
-import Data.Text.ICU
 import Numeric (readDec)
-import TestUtils
 
 -- A regexp replacement string.
 data ReplacementPart = LiteralPart String | GroupPart Int deriving (Show, Eq)
 type Replacement = [ReplacementPart]
+
+literalReplacement :: String -> Replacement
+literalReplacement s = [LiteralPart s]
 
 -- Parse a replacement string into a data structure, with the following
 -- escape sequences:
