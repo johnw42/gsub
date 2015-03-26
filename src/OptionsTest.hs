@@ -103,9 +103,9 @@ prop_parseArgs_noFlags name =
     forAll arbPosArgList $ \(args@(p:r:fs)) ->
     case parseArgs name args of
         Right opts -> conjoin
-            [ filesToProcess opts == fs
-            , patternString opts == p
-            , replacementString opts == r
+            [ filesOpt opts == fs
+            , patternStringOpt opts == p
+            , replacementStringOpt opts == r
             ]
         Left _ -> property False
 
@@ -113,10 +113,10 @@ prop_parseArgs_noFlags name =
 prop_parseArgs_withFlags name =
     forAll arbFullArgList' $ \(FullArgList (p:r:fs) flags args) ->
     case parseArgs name args of
-        Right plan -> conjoin
-            [ filesToProcess plan == fs
-            , patternString plan == p
-            , replacementString plan == r
+        Right opts -> conjoin
+            [ filesOpt opts == fs
+            , patternStringOpt opts == p
+            , replacementStringOpt opts == r
             ]
         Left _ -> discard
 
@@ -124,25 +124,25 @@ prop_parseArgs_withDiff name  =
     forAll arbFullArgList $ \args ->
     ("-D" `elem` args || "--diff" `elem` args) ==> case parseArgs name args of
         Left _ -> discard
-        Right plan -> planMode plan == DiffMode
+        Right opts -> planModeOpt opts == DiffMode
 
 prop_parseArgs_withDryRun name =
     forAll arbFullArgList $ \args ->
     ("-N" `elem` args || "--no-modify" `elem` args) ==> case parseArgs name args of
         Left _ -> discard
-        Right plan -> planMode plan == DryRunMode
+        Right opts -> planModeOpt opts == DryRunMode
 
 prop_parseArgs_withUndo name =
     forAll arbFullArgList $ \args ->
     ("-u" `elem` args || "--undo" `elem` args) ==> case parseArgs name args of
         Left _ -> discard
-        Right plan -> planMode plan == UndoMode
+        Right opts -> planModeOpt opts == UndoMode
 
 prop_parseArgs_withDefaultMode name =
     forAll arbFullArgList $ \args ->
     not (any (`elem` modeFlags) args) ==> case parseArgs name args of
         Left _ -> discard
-        Right plan -> planMode plan == RunMode
+        Right opts -> planModeOpt opts == RunMode
 
 return []
 test = $forAllProperties quickCheckResult

@@ -21,15 +21,15 @@ data PlanMode
 
 -- Command-line options.
 data Options = Options {
-    patternString :: String,
-    replacementString :: String,
-    filesToProcess :: [FilePath],
-    planMode :: PlanMode,
-    backupSuffix :: Maybe String,
-    fixedStrings :: Bool,
-    specifiedPatchFilePath :: Maybe FilePath,
-    keepGoingAfterErrors :: Bool,
-    ignoreCase :: Bool
+    patternStringOpt :: String,
+    replacementStringOpt :: String,
+    filesOpt :: [FilePath],
+    planModeOpt :: PlanMode,
+    backupSuffixOpt :: Maybe String,
+    fixedStringsOpt :: Bool,
+    patchFilePathOpt :: Maybe FilePath,
+    keepGoingOpt :: Bool,
+    ignoreCaseOpt :: Bool
     } deriving (Eq, Show)
 
 instance Arbitrary Options where

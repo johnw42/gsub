@@ -1,8 +1,7 @@
 module Plan where
 
 import FindReplace
-import Options hiding (patternString)
-import qualified Options as O
+import Options
 
 import TestUtils
 
@@ -17,12 +16,22 @@ import Text.Regex.Base (makeRegexOptsM)
 import Text.Regex.PCRE.String (Regex, compUTF8, compCaseless, execBlank)
 
 -- An execution plan.
-data Plan = Plan {
-    options :: Options,
-    patchFilePath :: FilePath,
-    replacement :: Replacement,
-    patternRegex :: Either String Regex
+data Plan = Plan
+    { options :: Options
+    , patchFilePath :: FilePath
+    , replacement :: Replacement
+    , patternRegex :: Either String Regex
     }
+
+-- A facade for options.
+patternString = patternStringOpt . options
+replacementString = replacementStringOpt . options
+filesToProcess = filesOpt . options
+planMode = planModeOpt . options
+backupSuffix = backupSuffixOpt . options
+useFixedStrings = fixedStringsOpt . options
+keepGoing = keepGoingOpt . options
+ignoreCase = ignoreCaseOpt . options
 
 instance Show Plan where
     show _ = "<Plan>"
@@ -30,20 +39,21 @@ instance Show Plan where
 instance Arbitrary Plan where
     arbitrary = makePlan `liftM` arbitrary
 
-patternString = O.patternString . options
+execParseArgsToPlan :: IO Plan
+execParseArgsToPlan = makePlan `liftM` execParseArgs
 
 makePlan opts = plan
     where
         plan = Plan opts
-            (defaultPatchFileName plan)
-            (if fixedStrings opts
-                then literalReplacement (replacementString opts)
-                else parseReplacement (replacementString opts))
-            (if fixedStrings opts
+            (defaultPatchFileName opts)
+            (if fixedStringsOpt opts
+                then literalReplacement (replacementStringOpt opts)
+                else parseReplacement (replacementStringOpt opts))
+            (if fixedStringsOpt opts
                 then Left "internal error"
-                else compile (patternString plan))
+                else compile (patternStringOpt opts))
         compile pat = makeRegexOptsM compOpt execOpt pat
-        compOpt = if ignoreCase opts
+        compOpt = if ignoreCaseOpt opts
             then compUTF8 .|. compCaseless
             else compUTF8
         execOpt = execBlank
@@ -55,14 +65,16 @@ toHexString = concat . map (printf "%02x") . B.unpack
 prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
 prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
 
-hashOptions :: Plan -> String
-hashOptions plan = 
+hashOptions :: Options -> String
+hashOptions opts = 
     toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
     where
         planStrings =
-            [ patternString plan
-            , replacementString $ options plan
-            ] ++ (filesToProcess $ options plan)
+            [ patternStringOpt opts
+            , replacementStringOpt opts
+            , if ignoreCaseOpt opts then "ignoreCase" else ""
+            , if fixedStringsOpt opts then "fixedStrings" else ""
+            ] ++ filesOpt opts
 
-defaultPatchFileName :: Plan -> String
+defaultPatchFileName :: Options -> String
 defaultPatchFileName plan = ".gsub_" ++ (hashOptions plan) ++ ".diff"

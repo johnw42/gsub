@@ -2,7 +2,6 @@
 
 module Main (main) where
 
-import Options hiding (patternString)
 import Plan
 import Utils
 
@@ -47,7 +46,7 @@ checkFile path = liftM firstJust $ sequence $ map ($ path) checks
 
 validateFiles :: Plan -> IO [FileError]
 validateFiles plan = do
-    maybes <- forM (filesToProcess $ options plan) $ \path -> do
+    maybes <- forM (filesToProcess plan) $ \path -> do
         error <- checkFile path
         return $ fmap (FileError path) error
     return $ catMaybes maybes
@@ -59,7 +58,7 @@ transformLine plan line@(c:cs)
     | otherwise = c : transformLine plan cs
     where
         pat = patternString plan
-        rep = replacementString $ options plan
+        rep = replacementString plan
 
 transformFileContent :: Plan -> String -> String
 transformFileContent plan = unlines . map (transformLine plan) . lines
@@ -69,7 +68,7 @@ prop_transformFileContent plan before after =
     not (pattern `isInfixOf` (before ++ replacement)) ==>
         replacement `isInfixOf` result && not (pattern `isInfixOf` result)
     where pattern = patternString plan
-          replacement = replacementString $ options plan
+          replacement = replacementString plan
           content = before ++ pattern ++ after
           result = transformFileContent plan content
 
@@ -103,7 +102,7 @@ processFiles plan = do
     return []  -- TODO
     where
         makePatches :: IO [PatchData]
-        makePatches = forM (filesToProcess $ options plan) (processSingleFile plan)
+        makePatches = forM (filesToProcess plan) (processSingleFile plan)
         writePatches patchPath patchParts =
             writeFile patchPath (concat patchParts)
 
@@ -122,7 +121,7 @@ main = do
     if null args
     then testMain
     else do
-        plan <- makePlan `liftM` execParseArgs
+        plan <- execParseArgsToPlan
         errors <- validateFiles plan
         mapM_ print errors
         when (null errors) $ do
