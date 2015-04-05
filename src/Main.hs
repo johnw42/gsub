@@ -16,7 +16,7 @@ import qualified PlanTest
 import Control.Applicative ((<$>), (<*>), pure)
 import Control.Exception(bracket)
 import Control.Monad
-import Control.Monad.Maybe
+--import Control.Monad.Maybe
 import Control.Monad.Trans
 import qualified Data.List as L
 import Data.Maybe
@@ -121,22 +121,22 @@ testMain = do
         --, PlanTest.test
         ]
     if and results
-    then putStrLn "All tests passed!"
-    else putStrLn "Something failed."
+      then putStrLn "All tests passed!"
+      else putStrLn "Something failed."
     --PlanTest.test
     --return ()
 
 main = do
     args <- getArgs
     if null args
-    then testMain
-    else do
-        plan <- execParseArgs
-        errors <- validateFiles plan
+      then testMain
+      else do
+      plan <- execParseArgs
+      errors <- validateFiles plan
+      mapM_ print errors
+      when (null errors) $ do
+        errors <- processFiles plan
         mapM_ print errors
-        when (null errors) $ do
-            errors <- processFiles plan
-            mapM_ print errors
 
 
 --(define (generate-patch-file-path)

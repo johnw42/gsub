@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module FindReplace (parseReplacement, test) where
 
 import Data.Char (isDigit)

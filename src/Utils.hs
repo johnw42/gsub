@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Utils where
 
 import TestUtils

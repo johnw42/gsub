@@ -1,3 +1,4 @@
+{-# LANGUAGE TemplateHaskell #-}
 module PlanTest (test) where
 
 import Plan
@@ -5,14 +6,17 @@ import Plan
 import TestUtils
 
 import Control.Monad
-import Control.Monad.Random
 import Data.Either
 import Data.List
 import Data.Maybe
 import System.IO (stdout)
+import System.Random
 
 type FlagPart = String
 type PosArg = String
+
+isLeft (Left _) = True
+isLeft _ = False
 
 -- Generator for arbitrary positional arguments.
 arbPosArg :: Gen PosArg
