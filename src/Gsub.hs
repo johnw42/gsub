@@ -1,17 +1,7 @@
-{-# LANGUAGE CPP, TemplateHaskell #-}
+module Gsub where
 
-#ifdef TEST
-module Main where
-#else
-module Main (main) where
-#endif
-
-import Plan
+import Plan hiding (Error)
 import Utils
-
-import TestUtils
-import qualified FindReplace
-import qualified PlanTest
 
 import Control.Applicative ((<$>), (<*>), pure)
 import Control.Exception(bracket)
@@ -66,16 +56,6 @@ transformLine plan line@(c:cs)
 transformFileContent :: Plan -> String -> String
 transformFileContent plan = unlines . map (transformLine plan) . lines
 
-prop_transformFileContent plan before after =
-    within 100000 $
-    not (pattern `L.isInfixOf` (replacement ++ after)) ==>
-    not (pattern `L.isInfixOf` (before ++ replacement)) ==>
-        replacement `L.isInfixOf` result && not (pattern `L.isInfixOf` result)
-    where pattern = patternString plan
-          replacement = replacementString plan
-          content = before ++ pattern ++ after
-          result = transformFileContent plan content
-
 type PatchData = String
 
 runDiff :: FilePath -> FilePath -> IO PatchData
@@ -110,34 +90,14 @@ processFiles plan = do
         writePatches patchPath patchParts =
             writeFile patchPath (concat patchParts)
 
-return []
-localTest = $forAllProperties quickCheckResult
-
-testMain :: IO ()
-testMain = do
-    results <- sequence
-        [ FindReplace.test
-        , localTest
-        --, PlanTest.test
-        ]
-    if and results
-      then putStrLn "All tests passed!"
-      else putStrLn "Something failed."
-    --PlanTest.test
-    --return ()
-
 main = do
     args <- getArgs
-    if null args
-      then testMain
-      else do
-      plan <- execParseArgs
-      errors <- validateFiles plan
+    plan <- execParseArgs
+    errors <- validateFiles plan
+    mapM_ print errors
+    when (null errors) $ do
+      errors <- processFiles plan
       mapM_ print errors
-      when (null errors) $ do
-        errors <- processFiles plan
-        mapM_ print errors
-
 
 --(define (generate-patch-file-path)
 --  (trace "filename" path->string

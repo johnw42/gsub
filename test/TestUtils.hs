@@ -34,12 +34,12 @@ quickCheckWithResult args prop = do
 infix 5 ==?
 (==?) :: (Eq a, Show a) => a -> a -> Property
 a ==? b =
-    counterexample ("expecting " ++ show b ++ ", got " ++ show a) (a == b)
+    printTestCase ("expecting " ++ show b ++ ", got " ++ show a) (a == b)
 
 -- Apply and check for equality.
 apEq :: (Show a, Show b, Eq b) => (a -> b) -> a -> b -> Property
 apEq f a b =
-    counterexample
+    printTestCase
         ("Expecting " ++ show a ++ " -> " ++ show b ++ ", got -> " ++ show fa)
         (fa == b)
     where fa = f a

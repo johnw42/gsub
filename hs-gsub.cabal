@@ -41,10 +41,12 @@ build-type:          Simple
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.8
 
-
-executable gsub
+library
   hs-source-dirs:      src
-  main-is:             Main.hs
+  exposed-modules:     Gsub
+                       Plan
+                       FindReplace
+                       Utils
   
   -- Other library packages from which modules are imported.
   -- To replace: cryptohash, text-icu
@@ -56,17 +58,26 @@ executable gsub
                        optparse-applicative,
                        process,
                        random,
-                       QuickCheck >= 2.8,
+                       QuickCheck,
                        text,
                        text-icu
+
+executable gsub
+  hs-source-dirs:      .
+  main-is:             Main.hs
+  build-depends:       hs-gsub,
+                       base
   
--- test-suite all
---   type:                 exitcode-stdio-1.0
---   main-is:              BashifyTest.hs
---   hs-source-dirs:       test
---   build-depends:        bashify,
---                         base >= 4.6,
---                         HUnit,
---                         test-framework,
---                         test-framework-quickcheck2,
---                         test-framework-hunit
+test-suite gsub-test
+  type:                exitcode-stdio-1.0
+  main-is:             TestMain.hs
+  hs-source-dirs:      test
+  build-depends:       hs-gsub,
+                       HUnit,
+                       QuickCheck,
+                       base,
+                       bytestring,
+                       random,
+                       test-framework,
+                       test-framework-quickcheck2,
+                       test-framework-hunit

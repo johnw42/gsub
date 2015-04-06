@@ -1,8 +1,6 @@
-module Plan (Plan(..), PlanMode(..), defaultPlan, parseArgs, execParseArgs) where
+module Plan where
 
 import Utils
-
-import TestUtils hiding (Success)
 
 import Data.Char (isHexDigit)
 import qualified Data.List as L
@@ -42,17 +40,6 @@ data Plan = Plan {
 makePlan a b c d e f g h = plan
     where
         plan = Plan a b c d e f g h (defaultPatchFileName plan)
-
-instance Arbitrary Plan where
-    arbitrary = makePlan 
-        <$> arbitrary `suchThat` ('\n' `notElem`) `suchThat` (not . null)
-        <*> arbitrary `suchThat` ('\n' `notElem`)
-        <*> arbitrary
-        <*> elements [RunMode, DryRunMode, DiffMode, UndoMode]
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
 
 parser :: Parser Plan
 parser = makePlan
@@ -113,9 +100,6 @@ defaultPlan p r fs =
 -- Convert a ByteString to a string of hexadecimal digits
 toHexString :: B.ByteString -> String
 toHexString = concat . map (printf "%02x") . B.unpack
-
-prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
-prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
 
 hashPlan :: Plan -> String
 hashPlan plan = 

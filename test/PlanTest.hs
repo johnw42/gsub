@@ -1,20 +1,37 @@
-module MainTest (test) where
+{-# LANGUAGE TemplateHaskell #-}
+module PlanTest (tests) where
 
-import Main hiding (test)
 import Plan
-import Utils hiding (test)
 
-import TestUtils
-
+import Control.Applicative ((<$>), (<*>))
 import Control.Monad
-import Control.Monad.Random
+import qualified Data.ByteString as B
+import Data.Char (isHexDigit)
 import Data.Either
 import Data.List
 import Data.Maybe
 import System.IO (stdout)
+import System.Random
+import Test.Framework (testGroup)
+import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.QuickCheck
 
 type FlagPart = String
 type PosArg = String
+
+instance Arbitrary Plan where
+    arbitrary = makePlan 
+        <$> arbitrary `suchThat` ('\n' `notElem`) `suchThat` (not . null)
+        <*> arbitrary `suchThat` ('\n' `notElem`)
+        <*> arbitrary
+        <*> elements [RunMode, DryRunMode, DiffMode, UndoMode]
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+        <*> arbitrary
+
+prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
+prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
 
 -- Generator for arbitrary positional arguments.
 arbPosArg :: Gen PosArg
@@ -47,6 +64,7 @@ arbFlag = do
         , (1, return [longFlag, flagArg])
         ]
 
+prop_arbFlag_length :: Property
 prop_arbFlag_length =
     forAll arbFlag (\flag -> length flag `elem` [1..2])
 
@@ -96,16 +114,20 @@ prop_parseArgs_notEnough name =
     forAll arbFlagList $ \flags ->
     forAll (posArgs `withFlags` flags) $ \args ->
     conjoin
-        [ case parseArgs name posArgs of
-            Left error -> counterexample error $ property $ error == name ++ ": not enough arguments\n"
-            Right _ -> property False
-        , property $ isLeft (parseArgs name args)
+        [ isLeft (parseArgs name posArgs)
+        , isLeft (parseArgs name args)
         ]
 
 -- Test with no flags.
 prop_parseArgs_noFlags name =
-    forAll arbPosArgList $ \(args@(pattern:replacement:files)) ->
-    parseArgs name args == Right (defaultPlan pattern replacement files)
+    forAll arbPosArgList $ \(args@(p:r:fs)) ->
+    case parseArgs name args of
+        Right plan -> conjoin
+            [ filesToProcess plan == fs
+            , patternString plan == p
+            , replacementString plan == r
+            ]
+        Left _ -> property False
 
 -- Test with valid flags.
 prop_parseArgs_withFlags name =
@@ -142,14 +164,15 @@ prop_parseArgs_withDefaultMode name =
         Left _ -> discard
         Right plan -> planMode plan == RunMode
 
--- Test that firstJust works.
-prop_firstJust_empty = once $ isNothing $ firstJust []
-prop_firstJust_allNothing (Positive (Small n)) =
-    isNothing $ firstJust $ replicate n Nothing
-prop_firstJust_typical (NonEmpty items) =
-    case firstJust items of
-        Nothing -> all isNothing items
-        Just x -> Just x == head (dropWhile isNothing items)
-
-return []
-test = $forAllProperties quickCheckResult
+tests = testGroup "Plan" [
+  testProperty "toHexString1" prop_toHexString1,
+  testProperty "arbFlag_length" prop_arbFlag_length,
+  testProperty "arbFlag_dash" prop_arbFlag_dash,
+  testProperty "parseArgs_notEnough" prop_parseArgs_notEnough,
+  testProperty "parseArgs_noFlags" prop_parseArgs_noFlags,
+  testProperty "parseArgs_withFlags" prop_parseArgs_withFlags,
+  testProperty "parseArgs_withDiff" prop_parseArgs_withDiff,
+  testProperty "parseArgs_withDryRun" prop_parseArgs_withDryRun,
+  testProperty "parseArgs_withUndo" prop_parseArgs_withUndo,
+  testProperty "parseArgs_withDefaultMode" prop_parseArgs_withDefaultMode
+  ]
