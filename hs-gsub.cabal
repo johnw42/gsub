@@ -44,6 +44,7 @@ cabal-version:       >=1.8
 library
   hs-source-dirs:      src
   exposed-modules:     Gsub
+                       Options
                        Plan
                        FindReplace
                        Utils
@@ -58,6 +59,8 @@ library
                        optparse-applicative,
                        process,
                        random,
+                       regex-base,
+                       regex-pcre,
                        QuickCheck,
                        text,
                        text-icu

@@ -1,5 +1,6 @@
 module Gsub where
 
+import Options
 import Plan
 
 import Control.Exception (bracket)
@@ -77,7 +78,7 @@ processSingleFile plan path = do
 processFiles :: Plan -> IO [FileError]
 processFiles plan = do
     makePatches >>= writePatches (patchFilePath plan)
-    return []
+    return [] -- TODO
     where
         makePatches :: IO [PatchData]
         makePatches = forM (filesToProcess plan) (processSingleFile plan)
@@ -89,13 +90,15 @@ firstJust :: [Maybe a] -> Maybe a
 firstJust = getFirst . mconcat . map First
 
 main = do
-    args <- getArgs
-    plan <- execParseArgs
-    errors <- validateFiles plan
-    mapM_ print errors
-    when (null errors) $ do
-      errors <- processFiles plan
-      mapM_ print errors
+  planOrError <- execParseArgsToPlan
+  case planOrError
+    of Left error -> putStrLn error
+       Right plan -> do
+         errors <- validateFiles plan
+         mapM_ print errors
+         when (null errors) $ do
+           errors <- processFiles plan
+           mapM_ print errors
 
 --(define (generate-patch-file-path)
 --  (trace "filename" path->string

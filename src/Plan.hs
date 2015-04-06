@@ -1,107 +1,82 @@
 module Plan where
 
+import FindReplace
+import Options
 import Utils
 
-import qualified Data.List as L
+import Control.Monad (liftM)
 import qualified Crypto.Hash.SHA1 as SHA1
+import Data.Bits ((.|.))
+import qualified Data.List as L
 import qualified Data.ByteString.Char8 as B
 import Options.Applicative ((<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure, flag, flag', getParseResult, help, helper, idm, info, long, many, metavar, optional, prefs, pure, short, some, strArgument, strOption, switch)
 import Text.Printf (printf)
+import Text.Regex.Base (makeRegexOptsM)
+import Text.Regex.PCRE.String (Regex, compUTF8, compCaseless, execBlank)
 
-type Error = String
-
-data PlanMode
-    = RunMode
-    | DryRunMode
-    | DiffMode
-    | UndoMode
-    deriving (Eq, Show)
+import Control.Exception.Base
+import Text.Regex.Base
+import Text.Regex.PCRE.String
+import System.IO.Unsafe
 
 -- An execution plan.
-data Plan = Plan {
-  patternString :: String,
-  replacementString :: String,
-  filesToProcess :: [FilePath],
-  planMode :: PlanMode,
-  backupSuffix :: Maybe String,
-  fixedStrings :: Bool,
-  specifiedPatchFilePath :: Maybe FilePath,
-  keepGoingAfterErrors :: Bool,
-  patchFilePath :: FilePath
-  } deriving (Eq, Show)
+data Plan = Plan
+    { options :: Options
+    , patchFilePath :: FilePath
+    , replacement :: Replacement
+    , patternRegex :: Maybe Regex
+    }
 
-makePlan a b c d e f g h = plan
-    where
-        plan = Plan a b c d e f g h (defaultPatchFileName plan)
-
-parser :: Parser Plan
-parser = makePlan
-    <$> (strArgument $
-            metavar "<pattern>" <>
-            help "Regex or string to replace.")
-    <*> (strArgument $
-            metavar "<replacement>" <>
-            help "Replacement string.")
-    <*> (some $ strArgument $
-            metavar "<file>..." <>
-            help "List of files to process.")
-    <*> (pure RunMode
-        <|> (flag' DiffMode $
-                short 'D' <>
-                long "diff" <>
-                help "Don't modify files or create a patch file, just show the diff.")
-        <|> (flag' DryRunMode $
-                short 'N' <>
-                long "no-modify" <>
-                help "Don't modify files, just create a patch file.")
-        <|> (flag' UndoMode $
-                short 'u' <>
-                long "undo" <>
-                help "Undo a previous command with the same arguments.")
-        )
-    <*> (optional $ strOption $
-            short 'i' <>
-            long "backup-suffix" <>
-            metavar "<suffix>" <>
-            help "Create backup file by appending suffix (like perl -i).")
-    <*> (switch $
-            short 'F' <>
-            long "fixed-strings" <>
-            help "Treat <pattern> and <replacement> as literal strings (like grep -F).")
-    <*> (optional $ strOption $
-            short 'P' <>
-            long "patch-file" <>
-            metavar "<path>" <>
-            help "Set the backup file to create.")
-    <*> (switch $
-            short 'k' <>
-            long "keep-going" <>
-            help "Don't stop after encountering errors.")
-
-execParseArgs :: IO Plan
-execParseArgs = execParser (info (helper <*> parser) idm)
-
--- Parse arguments into an error message or an execution plan.
-parseArgs :: String -> [String] -> Either String Plan
-parseArgs progName args =
-    maybe (Left "parse faied") Right $
-        getParseResult $ execParserPure (prefs idm) (info parser idm) args
+-- A facade for options.
+patternString = patternStringOpt . options
+replacementString = replacementStringOpt . options
+filesToProcess = filesOpt . options
+planMode = planModeOpt . options
+backupSuffix = backupSuffixOpt . options
+useFixedStrings = fixedStringsOpt . options
+keepGoing = keepGoingOpt . options
+ignoreCase = ignoreCaseOpt . options
 
 defaultPlan p r fs =
     let (Right plan) = parseArgs "gsub" (p:r:fs) in plan
+                                                    
+execParseArgsToPlan :: IO (Either String Plan)
+execParseArgsToPlan = makePlan `liftM` execParseArgs
+
+makePlan :: Options -> Either String Plan
+makePlan opts = do
+    regex <- if fixedStringsOpt opts
+        then Left "internal error"
+        else doCompile (patternStringOpt opts)
+    return $ Plan opts
+        (defaultPatchFileName opts)
+        (if fixedStringsOpt opts
+            then literalReplacement (replacementStringOpt opts)
+            else parseReplacement (replacementStringOpt opts))
+        (if fixedStringsOpt opts then Nothing else Just regex)
+    where
+      doCompile :: String -> Either String Regex
+      doCompile pat =
+        either (Left . show) Right (unsafePerformIO $ compile compOpt execOpt pat)
+      compOpt = if ignoreCaseOpt opts
+                then compUTF8 .|. compCaseless
+                else compUTF8
+      execOpt = execBlank
 
 -- Convert a ByteString to a string of hexadecimal digits
 toHexString :: B.ByteString -> String
 toHexString = concat . map (printf "%02x") . B.unpack
 
-hashPlan :: Plan -> String
-hashPlan plan = 
+hashOptions :: Options -> String
+hashOptions opts = 
     toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
     where
         planStrings =
-            [ patternString plan
-            , replacementString plan
-            ] ++ filesToProcess plan
+            [ patternStringOpt opts
+            , replacementStringOpt opts
+            , if ignoreCaseOpt opts then "ignoreCase" else ""
+            , if fixedStringsOpt opts then "fixedStrings" else ""
+            ] ++ filesOpt opts
 
-defaultPatchFileName :: Plan -> String
-defaultPatchFileName plan = ".gsub_" ++ (hashPlan plan) ++ ".diff"
+defaultPatchFileName :: Options -> String
+defaultPatchFileName opts = ".gsub_" ++ (hashOptions opts) ++ ".diff"

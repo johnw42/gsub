@@ -13,9 +13,7 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit
 import Test.QuickCheck
 
-prop_transformFileContent :: Plan -> String -> String -> Property
-prop_transformFileContent plan before after =
-    within 100000 $
+prop_transformFileContent (Blind plan) before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
         replacement `isInfixOf` result && not (pattern `isInfixOf` result)
