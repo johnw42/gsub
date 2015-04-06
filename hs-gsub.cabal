@@ -48,7 +48,7 @@ executable gsub
   
   -- Other library packages from which modules are imported.
   -- To replace: cryptohash, text-icu
-  build-depends:       base == 4.6.*,
+  build-depends:       base == 4.7.*,
                        bytestring,
                        cryptohash,
                        mtl,
@@ -56,7 +56,7 @@ executable gsub
                        optparse-applicative,
                        process,
                        random,
-                       QuickCheck,
+                       QuickCheck >= 2.8,
                        text,
                        text-icu
   

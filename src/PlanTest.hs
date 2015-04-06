@@ -15,9 +15,6 @@ import System.Random
 type FlagPart = String
 type PosArg = String
 
-isLeft (Left _) = True
-isLeft _ = False
-
 -- Generator for arbitrary positional arguments.
 arbPosArg :: Gen PosArg
 arbPosArg = arbitrary `suchThat` (not . ("-" `isPrefixOf`))
