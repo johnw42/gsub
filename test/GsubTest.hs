@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module GsubTest where
 
 import Gsub
