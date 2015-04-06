@@ -2,18 +2,11 @@ module Plan where
 
 import Utils
 
-import Data.Char (isHexDigit)
 import qualified Data.List as L
-import Data.Maybe (isJust, fromJust)
-import Control.Monad (foldM)
 import qualified Crypto.Hash.SHA1 as SHA1
 import qualified Data.ByteString.Char8 as B
-import Options.Applicative (
-    (<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure,
-    flag, flag', getParseResult, help, helper, idm, info, long, many, metavar,
-    optional, prefs, pure, short, some, strArgument, strOption, switch)
+import Options.Applicative ((<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure, flag, flag', getParseResult, help, helper, idm, info, long, many, metavar, optional, prefs, pure, short, some, strArgument, strOption, switch)
 import Text.Printf (printf)
-import System.Console.GetOpt (ArgDescr(NoArg, ReqArg), ArgOrder(Permute), OptDescr(Option), getOpt, usageInfo)
 
 type Error = String
 

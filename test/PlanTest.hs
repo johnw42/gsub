@@ -1,17 +1,13 @@
-{-# LANGUAGE TemplateHaskell #-}
 module PlanTest (tests) where
 
 import Plan
 
 import Control.Applicative ((<$>), (<*>))
-import Control.Monad
+import Control.Monad (foldM, liftM, liftM2)
 import qualified Data.ByteString as B
 import Data.Char (isHexDigit)
-import Data.Either
-import Data.List
-import Data.Maybe
-import System.IO (stdout)
-import System.Random
+import Data.Either (isLeft)
+import Data.List (isPrefixOf)
 import Test.Framework (testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck

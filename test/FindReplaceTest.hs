@@ -1,14 +1,13 @@
 module FindReplaceTest (tests) where
 
 import FindReplace
-
-import TestUtils
+import TestUtils (apEq)
 
 import Data.Char (isDigit)
 import Data.List (tails)
-
 import Test.Framework (testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
+import Test.QuickCheck
 
 prop_mergeLiterals1 pa pb =
     printTestCase (show merged) $

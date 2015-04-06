@@ -1,9 +1,8 @@
 module Main where
 
-import TestUtils
-import FindReplaceTest
-import GsubTest
-import PlanTest
+import qualified FindReplaceTest
+import qualified GsubTest
+import qualified PlanTest
 
 import Test.Framework (defaultMain)
 

@@ -1,22 +1,16 @@
 module Gsub where
 
-import Plan hiding (Error)
-import Utils
+import Plan
 
-import Control.Applicative ((<$>), (<*>), pure)
-import Control.Exception(bracket)
-import Control.Monad
---import Control.Monad.Maybe
-import Control.Monad.Trans
-import qualified Data.List as L
-import Data.Maybe
-import Data.Traversable (sequenceA)
-import System.Directory
-import System.Environment
-import System.IO
+import Control.Exception (bracket)
+import Control.Monad (forM, liftM, when)
+import Data.List (isPrefixOf)
+import Data.Maybe (catMaybes)
+import Data.Monoid (First(..), mconcat)
+import System.Directory (doesDirectoryExist, doesFileExist, getPermissions, getTemporaryDirectory, readable, writable)
+import System.Environment (getArgs)
+import System.IO (hClose, hFlush, hPutStr, openTempFile)
 import System.Process (readProcess)
-
-type Error = String
 
 data FileError = FileError FilePath Error
 
@@ -47,7 +41,7 @@ validateFiles plan = do
 transformLine :: Plan -> String -> String
 transformLine _ "" = ""
 transformLine plan line@(c:cs)
-    | pat `L.isPrefixOf` line = rep ++ transformLine plan (drop (length pat) line)
+    | pat `isPrefixOf` line = rep ++ transformLine plan (drop (length pat) line)
     | otherwise = c : transformLine plan cs
     where
         pat = patternString plan
@@ -89,6 +83,10 @@ processFiles plan = do
         makePatches = forM (filesToProcess plan) (processSingleFile plan)
         writePatches patchPath patchParts =
             writeFile patchPath (concat patchParts)
+
+-- Find the first Just in a list.
+firstJust :: [Maybe a] -> Maybe a
+firstJust = getFirst . mconcat . map First
 
 main = do
     args <- getArgs

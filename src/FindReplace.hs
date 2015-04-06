@@ -1,8 +1,6 @@
 module FindReplace where
 
 import Data.Char (isDigit)
-import Data.List (inits, tails)
-import Data.Text.ICU
 import Numeric (readDec)
 
 data ReplacementPart = LiteralPart String | GroupPart Int deriving (Show, Eq)
