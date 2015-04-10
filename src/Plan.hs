@@ -9,7 +9,6 @@ import qualified Crypto.Hash.SHA1 as SHA1
 import Data.Bits ((.|.))
 import qualified Data.List as L
 import qualified Data.ByteString.Char8 as B
-import Options.Applicative ((<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure, flag, flag', getParseResult, help, helper, idm, info, long, many, metavar, optional, prefs, pure, short, some, strArgument, strOption, switch)
 import Text.Printf (printf)
 import Text.Regex.Base (makeRegexOptsM)
 import Text.Regex.PCRE.String (Regex, compUTF8, compCaseless, execBlank)

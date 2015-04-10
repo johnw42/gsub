@@ -63,7 +63,8 @@ library
                        regex-pcre,
                        QuickCheck,
                        text,
-                       text-icu
+                       text-icu,
+                       transformers
 
 executable hs-gsub
   hs-source-dirs:      .
