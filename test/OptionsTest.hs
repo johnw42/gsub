@@ -26,6 +26,7 @@ instance Arbitrary Options where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
+        <*> arbitrary
 
 type FlagPart = String
 type PosArg = String

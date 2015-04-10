@@ -62,7 +62,7 @@ runDiff oldPath newPath = do
         "-u",
         "--label=" ++ oldPath,
         "--label=" ++ oldPath,
-        "--", oldPath, newPath,
+        "--", oldPath, newPath
         ]
 
 processSingleFile :: Plan -> FilePath -> IO PatchData
