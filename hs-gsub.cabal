@@ -65,7 +65,7 @@ library
                        text,
                        text-icu
 
-executable gsub
+executable hs-gsub
   hs-source-dirs:      .
   main-is:             Main.hs
   build-depends:       hs-gsub,
