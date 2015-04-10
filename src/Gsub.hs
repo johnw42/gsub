@@ -21,16 +21,16 @@ instance Show FileError where
 -- Try to find a reason why a file can't be operated on.
 checkFile :: FilePath -> IO (Maybe Error)
 checkFile path = liftM firstJust $ sequence $ map ($ path) checks
-    where
-        makeCheck reason test path = do
-            ok <- test path
-            return $ if ok then Nothing else Just reason
-        checks =
-            [ makeCheck "is a directory" $ fmap not . doesDirectoryExist
-            , makeCheck "no such file" $ doesFileExist
-            , makeCheck "not readable" $ fmap readable . getPermissions
-            , makeCheck "not writable" $ fmap writable . getPermissions
-            ]
+  where
+    makeCheck reason test path = do
+        ok <- test path
+        return $ if ok then Nothing else Just reason
+    checks = [
+        makeCheck "is a directory" $ fmap not . doesDirectoryExist,
+        makeCheck "no such file" $ doesFileExist,
+        makeCheck "not readable" $ fmap readable . getPermissions,
+        makeCheck "not writable" $ fmap writable . getPermissions
+        ]
 
 validateFiles :: Plan -> IO [FileError]
 validateFiles plan = do
@@ -44,9 +44,9 @@ transformLine _ "" = ""
 transformLine plan line@(c:cs)
     | pat `isPrefixOf` line = rep ++ transformLine plan (drop (length pat) line)
     | otherwise = c : transformLine plan cs
-    where
-        pat = patternString plan
-        rep = replacementString plan
+  where
+    pat = patternString plan
+    rep = replacementString plan
 
 transformFileContent :: Plan -> String -> String
 transformFileContent plan = unlines . map (transformLine plan) . lines
@@ -56,14 +56,14 @@ type PatchData = String
 runDiff :: FilePath -> FilePath -> IO PatchData
 runDiff oldPath newPath = do
     readProcess "diff" diffArgs diffInput
-    where
-        diffInput = ""
-        diffArgs =
-            [ "-u"
-            , "--label=" ++ oldPath
-            , "--label=" ++ oldPath
-            , "--", oldPath, newPath
-            ]
+  where
+    diffInput = ""
+    diffArgs = [
+        "-u",
+        "--label=" ++ oldPath,
+        "--label=" ++ oldPath,
+        "--", oldPath, newPath,
+        ]
 
 processSingleFile :: Plan -> FilePath -> IO PatchData
 processSingleFile plan path = do
@@ -79,26 +79,26 @@ processFiles :: Plan -> IO [FileError]
 processFiles plan = do
     makePatches >>= writePatches (patchFilePath plan)
     return [] -- TODO
-    where
-        makePatches :: IO [PatchData]
-        makePatches = forM (filesToProcess plan) (processSingleFile plan)
-        writePatches patchPath patchParts =
-            writeFile patchPath (concat patchParts)
+  where
+    makePatches :: IO [PatchData]
+    makePatches = forM (filesToProcess plan) (processSingleFile plan)
+    writePatches patchPath patchParts =
+        writeFile patchPath (concat patchParts)
 
 -- Find the first Just in a list.
 firstJust :: [Maybe a] -> Maybe a
 firstJust = getFirst . mconcat . map First
 
 main = do
-  planOrError <- execParseArgsToPlan
-  case planOrError
-    of Left error -> putStrLn error
-       Right plan -> do
+    planOrError <- execParseArgsToPlan
+    case planOrError of
+     Left error -> putStrLn error
+     Right plan -> do
          errors <- validateFiles plan
          mapM_ print errors
          when (null errors) $ do
-           errors <- processFiles plan
-           mapM_ print errors
+             errors <- processFiles plan
+             mapM_ print errors
 
 --(define (generate-patch-file-path)
 --  (trace "filename" path->string
