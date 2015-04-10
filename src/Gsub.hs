@@ -5,6 +5,8 @@ import Plan
 
 import Control.Exception (bracket)
 import Control.Monad (forM, liftM, when)
+import Control.Monad.IO.Class
+import Control.Monad.State.Lazy (StateT, evalStateT)
 import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes)
 import Data.Monoid (First(..), mconcat)
@@ -17,6 +19,12 @@ data FileError = FileError FilePath Error
 
 instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
+
+data AppState = AppState {
+    appErrors :: [String]
+    }
+
+type App a = StateT AppState IO a
 
 -- Try to find a reason why a file can't be operated on.
 checkFile :: FilePath -> IO (Maybe Error)
@@ -89,16 +97,21 @@ processFiles plan = do
 firstJust :: [Maybe a] -> Maybe a
 firstJust = getFirst . mconcat . map First
 
-main = do
-    planOrError <- execParseArgsToPlan
+appMain :: App ()
+appMain = do
+    planOrError <- liftIO execParseArgsToPlan
     case planOrError of
-     Left error -> putStrLn error
+     Left error -> liftIO $ putStrLn error
      Right plan -> do
-         errors <- validateFiles plan
-         mapM_ print errors
+         errors <- liftIO $ validateFiles plan
+         mapM_ (liftIO . print) errors
          when (null errors) $ do
-             errors <- processFiles plan
-             mapM_ print errors
+             errors <- liftIO $ processFiles plan
+             mapM_ (liftIO . print) errors
+
+main = evalStateT appMain initAppState
+  where
+    initAppState = AppState []
 
 --(define (generate-patch-file-path)
 --  (trace "filename" path->string
