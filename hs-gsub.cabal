@@ -60,10 +60,10 @@ library
                      , filepath >= 1.3.0.2
                      , mtl
                      , optparse-applicative
+                     , pcre-heavy
+                     , pcre-light
                      , process
                      , random
-                     , regex-base
-                     , regex-pcre
                      , text
                      , text-icu
                      , transformers

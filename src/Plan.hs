@@ -10,16 +10,13 @@ import Data.Bits ((.|.))
 import qualified Data.List as L
 import qualified Data.ByteString.Char8 as B
 import Text.Printf (printf)
-import Text.Regex.Base (makeRegexOptsM)
-import Text.Regex.PCRE.String (Regex, compUTF8, compCaseless, execBlank)
 
 import Control.Exception.Base
-import Text.Regex.Base
-import Text.Regex.PCRE.String
-import System.IO.Unsafe
+import qualified Text.Regex.PCRE.Heavy as Heavy
+import qualified Text.Regex.PCRE.Light as Light
 
 data Transformation
-    = TransformRegex Regex Replacement
+    = TransformRegex Light.Regex Replacement
     | TransformFixed String String
 
 -- An execution plan.
@@ -45,32 +42,27 @@ defaultPlan p r fs =
 execParseArgsToPlan :: IO (Either String Plan)
 execParseArgsToPlan = makePlan `liftM` execParseArgs
 
+-- | Converts options into an execution plan.
 makePlan :: Options -> Either String Plan
 makePlan opts = do
-    regex <- if fixedStringsOpt opts
-             then Left "internal error"
-             else doCompile (patternStringOpt opts)
+    xfrm <- if fixedStringsOpt opts
+            then Right $ TransformFixed fixedPattern fixedReplacement
+            else do
+                regex <- doCompile
+                return $ TransformRegex regex regexReplacement
     return $ Plan opts
         (defaultPatchFileName opts)
-        (if fixedStringsOpt opts
-         then TransformFixed fixedPattern fixedReplacement
-         else TransformRegex regex regexReplacement)
-              
+        xfrm
     where
       fixedPattern = patternStringOpt opts
       fixedReplacement = replacementStringOpt opts
       regexReplacement = parseReplacement $ replacementStringOpt opts
+      pcreOpts = if ignoreCaseOpt opts
+                 then [Light.utf8, Light.caseless]
+                 else [Light.utf8]
+      doCompile = Heavy.compileM (B.pack $ patternStringOpt opts) pcreOpts
 
-      doCompile :: String -> Either String Regex
-      doCompile pat = either
-                      (Left . show)
-        Right (unsafePerformIO $ compile compOpt execOpt pat)
-      compOpt = if ignoreCaseOpt opts
-                then compUTF8 .|. compCaseless
-                else compUTF8
-      execOpt = execBlank
-
--- Convert a ByteString to a string of hexadecimal digits
+-- | Converts a ByteString to a string of hexadecimal digits.
 toHexString :: B.ByteString -> String
 toHexString = concat . map (printf "%02x") . B.unpack
 
