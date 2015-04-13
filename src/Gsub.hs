@@ -33,12 +33,14 @@ addAppError p e = do
     app <- get
     put app { appErrors = FileError p e : appErrors app }
 
--- | Prints errors and returns True if there were no errors.
-printAppErrors :: App Bool
-printAppErrors = do
+-- | Prints errors and if there are any, otherwise executes an action.
+unlessErrors :: App () -> App ()
+unlessErrors action = do
     app <- get
-    mapM_ (liftIO . print) (reverse $ appErrors app)
-    return $ null $ appErrors app
+    let errors = appErrors app
+    if null errors
+        then mapM_ (liftIO . print) (reverse errors)
+        else action
 
 -- | Tests whether a file can be operated on.  Adds an error if it
 -- can't be.
@@ -155,11 +157,9 @@ appMain = do
         Left error -> liftIO $ putStrLn error
         Right plan -> do
             validateFiles plan
-            ok <- printAppErrors
-            when ok $ do
+            unlessErrors $ do
                 processFiles plan
-                printAppErrors
-                return ()
+                unlessErrors $ return ()
 
 main = evalStateT appMain initAppState
   where
