@@ -18,12 +18,15 @@ import Text.Regex.Base
 import Text.Regex.PCRE.String
 import System.IO.Unsafe
 
+data Transformation
+    = TransformRegex Regex Replacement
+    | TransformFixed String String
+
 -- An execution plan.
 data Plan = Plan
     { options :: Options
     , patchFilePath :: FilePath
-    , replacement :: Replacement
-    , patternRegex :: Maybe Regex
+    , transformation :: Transformation
     }
 
 -- A facade for options.
@@ -45,18 +48,23 @@ execParseArgsToPlan = makePlan `liftM` execParseArgs
 makePlan :: Options -> Either String Plan
 makePlan opts = do
     regex <- if fixedStringsOpt opts
-        then Left "internal error"
-        else doCompile (patternStringOpt opts)
+             then Left "internal error"
+             else doCompile (patternStringOpt opts)
     return $ Plan opts
         (defaultPatchFileName opts)
         (if fixedStringsOpt opts
-            then literalReplacement (replacementStringOpt opts)
-            else parseReplacement (replacementStringOpt opts))
-        (if fixedStringsOpt opts then Nothing else Just regex)
+         then TransformFixed fixedPattern fixedReplacement
+         else TransformRegex regex regexReplacement)
+              
     where
+      fixedPattern = patternStringOpt opts
+      fixedReplacement = replacementStringOpt opts
+      regexReplacement = parseReplacement $ replacementStringOpt opts
+
       doCompile :: String -> Either String Regex
-      doCompile pat =
-        either (Left . show) Right (unsafePerformIO $ compile compOpt execOpt pat)
+      doCompile pat = either
+                      (Left . show)
+        Right (unsafePerformIO $ compile compOpt execOpt pat)
       compOpt = if ignoreCaseOpt opts
                 then compUTF8 .|. compCaseless
                 else compUTF8
