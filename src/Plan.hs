@@ -6,18 +6,18 @@ import Utils
 
 import Control.Monad (liftM)
 import qualified Crypto.Hash.SHA1 as SHA1
-import Data.Bits ((.|.))
 import qualified Data.List as L
 import qualified Data.ByteString.Char8 as B
 import Text.Printf (printf)
 
-import Control.Exception.Base
 import qualified Text.Regex.PCRE.Heavy as Heavy
 import qualified Text.Regex.PCRE.Light as Light
 
+data CaseHandling = IgnoreCase | ConsiderCase
+
 data Transformation
     = TransformRegex Light.Regex Replacement
-    | TransformFixed String String
+    | TransformFixed CaseHandling String String
 
 -- An execution plan.
 data Plan = Plan
@@ -36,9 +36,6 @@ useFixedStrings = fixedStringsOpt . options
 keepGoing = keepGoingOpt . options
 ignoreCase = ignoreCaseOpt . options
 
-defaultPlan p r fs =
-    let (Right plan) = parseArgs "gsub" (p:r:fs) in plan
-                                                    
 execParseArgsToPlan :: IO (Either String Plan)
 execParseArgsToPlan = makePlan `liftM` execParseArgs
 
@@ -46,7 +43,10 @@ execParseArgsToPlan = makePlan `liftM` execParseArgs
 makePlan :: Options -> Either String Plan
 makePlan opts = do
     xfrm <- if fixedStringsOpt opts
-            then Right $ TransformFixed fixedPattern fixedReplacement
+            then Right (TransformFixed
+                        caseHandling
+                        fixedPattern
+                        fixedReplacement)
             else do
                 regex <- doCompile
                 return $ TransformRegex regex regexReplacement
@@ -54,6 +54,9 @@ makePlan opts = do
         (defaultPatchFileName opts)
         xfrm
     where
+      caseHandling = if ignoreCaseOpt opts
+                     then IgnoreCase
+                     else ConsiderCase
       fixedPattern = patternStringOpt opts
       fixedReplacement = replacementStringOpt opts
       regexReplacement = parseReplacement $ replacementStringOpt opts

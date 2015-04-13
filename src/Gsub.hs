@@ -1,6 +1,7 @@
 module Gsub where
 
 import DiffDB
+import FindReplace
 import Options
 import Plan
 
@@ -8,12 +9,15 @@ import Control.Exception
 import Control.Monad (foldM, forM, liftM, unless, when)
 import Control.Monad.IO.Class
 import Control.Monad.State (StateT, evalStateT, get, put)
+import Data.Char
 import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes, fromJust, isJust)
 import Data.Monoid (First(..), mconcat)
 import System.Directory
 import System.IO
 import System.Process (readProcess)
+
+import qualified Text.Regex.PCRE.Heavy as Heavy
 
 data FileError = FileError FilePath Error
 
@@ -76,14 +80,22 @@ validateFiles plan =
 
 -- | Applies the specified transformation to a line of a file.
 transformLine :: Transformation -> String -> String
-transformLine t@(TransformFixed needle rep) line = loop line
+transformLine t@(TransformFixed ch needle rep) line = loop line
   where
     loop "" = ""
     loop cs@(c:cs')
-        | needle `isPrefixOf` cs =
+        | withCase needle `isPrefixOf` withCase cs =
               rep ++ loop (drop (length needle) cs)
         | otherwise = c : loop cs'
-transformLine (TransformRegex regex rep) line = undefined
+    withCase = case ch of
+        IgnoreCase -> map toLower
+        ConsiderCase -> id
+transformLine (TransformRegex regex rep) line =
+    Heavy.sub regex replacer line
+  where
+    replacer whole parts = case expand (whole:parts) rep of
+        Left _ -> undefined
+        Right result -> result
 
 -- | Applies the specified transformation to a whole file's content.
 transformFileContent :: Plan -> String -> String
