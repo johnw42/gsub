@@ -5,6 +5,7 @@ import FindReplace
 import Options
 import Plan
 
+import Control.Applicative ((<*>))
 import Control.Exception
 import Control.Monad (foldM, forM, liftM, unless, when)
 import Control.Monad.IO.Class
@@ -79,8 +80,9 @@ validateFiles plan =
     mapM_ checkFile (filesToProcess plan)
 
 -- | Applies the specified transformation to a line of a file.
-transformLine :: Transformation -> String -> String
-transformLine t@(TransformFixed ch needle rep) line = loop line
+transformLine :: Transformation -> String -> Either Error String
+transformLine t@(TransformFixed ch needle rep) line =
+    Right (loop line)
   where
     loop "" = ""
     loop cs@(c:cs')
@@ -91,17 +93,29 @@ transformLine t@(TransformFixed ch needle rep) line = loop line
         IgnoreCase -> map toLower
         ConsiderCase -> id
 transformLine (TransformRegex regex rep) line =
-    Heavy.sub regex replacer line
+    foldr eachMatch (Right line) matchRanges
   where
-    replacer whole parts = case expand (whole:parts) rep of
-        Left _ -> undefined
-        Right result -> result
+    matchRanges = Heavy.scanRanges regex line
+    eachMatch _ (Left e) = Left e
+    eachMatch ((i,j),subs) (Right s) =
+        case expand groups rep of
+            Left e -> Left e
+            Right expansion ->
+                Right (prefix ++ expansion ++ suffix)
+      where
+        prefix = take i s
+        suffix = drop j s
+        groups = map rangeToText groupRanges
+        groupRanges = (i,j):subs
+        rangeToText (i,j) = drop i (take j line)
 
 -- | Applies the specified transformation to a whole file's content.
-transformFileContent :: Plan -> String -> String
-transformFileContent plan =
-    unlines . map (transformLine $ transformation plan) . lines
-
+transformFileContent :: Plan -> String -> Either Error String
+transformFileContent plan text = do
+    let ls = lines text
+    tls <- forM ls (transformLine $ transformation plan)
+    return $ unlines tls
+    
 type PatchData = String
 
 -- | Runs the external diff tool over a pair of files.
@@ -141,14 +155,22 @@ withSystemTempFile template f = do
 
 -- | Processes a single file.
 processSingleFile :: Plan -> FilePath -> App PatchData
-processSingleFile plan path = liftIO $ do
-    diffPath <- getDiffPath (patchFilePath plan)
-    oldContent <- readFile path
-    withSystemTempFile "gsub.tmp" $
-        \tempPath tempH -> do
-            hPutStr tempH (transformFileContent plan oldContent)
-            hFlush tempH
-            runDiff path tempPath
+processSingleFile plan path = do
+    diffPath <- liftIO $ getDiffPath (patchFilePath plan)
+    oldContent <- liftIO $ readFile path
+    case transformFileContent plan oldContent of
+        Left e -> do
+            addAppError path e
+            return ""
+        Right newContent ->
+            liftIO $ withSystemTempFile "gsub.tmp" $
+            \tempPath tempH -> do
+                hPutStr tempH newContent
+                hClose tempH
+                patch <- runDiff path tempPath
+                unless (null patch) $ do
+                    copyFile tempPath path
+                return patch
 
 -- | Processes all the files in the plan.
 processFiles :: Plan -> App ()
