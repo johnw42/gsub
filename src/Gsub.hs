@@ -5,11 +5,11 @@ import FindReplace
 import Options
 import Plan
 
-import Control.Applicative ((<*>))
 import Control.Exception
 import Control.Monad (foldM, forM, liftM, unless, when)
 import Control.Monad.IO.Class
 import Control.Monad.State (StateT, evalStateT, get, put)
+import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
 import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes, fromJust, isJust)
@@ -20,16 +20,25 @@ import System.Process (readProcess)
 
 import qualified Text.Regex.PCRE.Heavy as Heavy
 
+type FileContent = L8.ByteString
+type PatchData = String
+
 data FileError = FileError FilePath Error
 
 instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
 
 data AppState = AppState {
-    appErrors :: [FileError]
+    appErrors :: [FileError],
+    touchedFiles :: [FilePath]
     }
 
 type App a = StateT AppState IO a
+
+addTouchedFile :: FilePath -> App ()
+addTouchedFile path = do
+    app <- get
+    put app { touchedFiles = path : touchedFiles app }
 
 addAppError :: FilePath -> Error -> App ()
 addAppError p e = do
@@ -79,10 +88,14 @@ validateFiles :: Plan -> App ()
 validateFiles plan =
     mapM_ checkFile (filesToProcess plan)
 
--- | Applies the specified transformation to a line of a file.
-transformLine :: Transformation -> String -> Either Error String
-transformLine t@(TransformFixed ch needle rep) line =
-    Right (loop line)
+-- | Transforms a line using fixed strings.
+transformLineFixed
+    :: CaseHandling
+    -> String  -- ^ Pattern string.
+    -> String  -- ^ Replacement string.
+    -> String  -- ^ String to replace in.
+    -> String
+transformLineFixed ch needle rep line = loop line
   where
     loop "" = ""
     loop cs@(c:cs')
@@ -92,7 +105,14 @@ transformLine t@(TransformFixed ch needle rep) line =
     withCase = case ch of
         IgnoreCase -> map toLower
         ConsiderCase -> id
-transformLine (TransformRegex regex rep) line =
+
+-- | Transforms a line using regex replacement.
+transformLineRegex
+    :: Heavy.Regex
+    -> Replacement
+    -> String
+    -> Either Error String
+transformLineRegex regex rep line =
     foldr eachMatch (Right line) matchRanges
   where
     matchRanges = Heavy.scanRanges regex line
@@ -109,15 +129,20 @@ transformLine (TransformRegex regex rep) line =
         groupRanges = (i,j):subs
         rangeToText (i,j) = drop i (take j line)
 
--- | Applies the specified transformation to a whole file's content.
-transformFileContent :: Plan -> String -> Either Error String
-transformFileContent plan text = do
-    let ls = lines text
-    tls <- forM ls (transformLine $ transformation plan)
-    return $ unlines tls
-    
-type PatchData = String
+-- | Applies the specified transformation to a line of a file.
+transformLine :: Transformation -> String -> Either Error String
+transformLine (TransformFixed ch needle rep) =
+    Right . transformLineFixed ch needle rep
+transformLine (TransformRegex regex rep) =
+    transformLineRegex regex rep
 
+-- | Applies the specified transformation to a whole file's content.
+transformFileContent :: Plan -> FileContent -> Either Error FileContent
+transformFileContent plan text = do
+    let ls = L8.unpack `map` L8.lines text
+    tls <- forM ls (transformLine $ transformation plan)
+    return $ L8.unlines (L8.pack `map` tls)
+    
 -- | Runs the external diff tool over a pair of files.
 runDiff :: FilePath -> FilePath -> IO PatchData
 runDiff oldPath newPath = do
@@ -157,7 +182,7 @@ withSystemTempFile template f = do
 processSingleFile :: Plan -> FilePath -> App PatchData
 processSingleFile plan path = do
     diffPath <- liftIO $ getDiffPath (patchFilePath plan)
-    oldContent <- liftIO $ readFile path
+    oldContent <- liftIO $ L8.readFile path
     case transformFileContent plan oldContent of
         Left e -> do
             addAppError path e
@@ -165,7 +190,7 @@ processSingleFile plan path = do
         Right newContent ->
             liftIO $ withSystemTempFile "gsub.tmp" $
             \tempPath tempH -> do
-                hPutStr tempH newContent
+                L8.hPut tempH newContent
                 hClose tempH
                 patch <- runDiff path tempPath
                 unless (null patch) $ do
@@ -193,4 +218,4 @@ appMain = do
 
 main = evalStateT appMain initAppState
   where
-    initAppState = AppState []
+    initAppState = AppState [] []
