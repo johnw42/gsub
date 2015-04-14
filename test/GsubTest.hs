@@ -20,7 +20,7 @@ prop_transformFileContent (Blind plan) before after =
     where pattern = patternString plan
           replacement = replacementString plan
           content = before ++ pattern ++ after
-          result = transformFileContent plan content
+          Right result = transformFileContent plan content
 
 tests = testGroup "Gsub" [
   testProperty "transformFileContent" prop_transformFileContent

@@ -17,7 +17,7 @@ import Test.QuickCheck
 
 instance Arbitrary Options where
     arbitrary = Options 
-        <$> arbitrary `suchThat` ('\n' `notElem`) `suchThat` (not . null)
+        <$> arbRegexPattern
         <*> arbitrary `suchThat` ('\n' `notElem`)
         <*> arbitrary
         <*> elements [RunMode, DryRunMode, DiffMode, UndoMode]
@@ -31,11 +31,15 @@ instance Arbitrary Options where
 type FlagPart = String
 type PosArg = String
 
--- Generator for arbitrary positional arguments.
+-- | Generator for an arbitrary string that is a valid regex pattern.
+arbRegexPattern :: Gen String
+arbRegexPattern = listOf1 (elements ['a'..'z'])
+
+-- | Generator for arbitrary positional arguments.
 arbPosArg :: Gen PosArg
 arbPosArg = arbitrary `suchThat` (not . ("-" `isPrefixOf`))
 
--- Generator for an arbitrary list of positional arguments.
+-- | Generator for an arbitrary list of positional arguments.
 arbPosArgList :: Gen [PosArg]
 arbPosArgList = liftM2 (++) (vectorOf 3 arbPosArg) (listOf arbPosArg)
 

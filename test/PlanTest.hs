@@ -12,9 +12,11 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 
 instance Arbitrary Plan where
-  arbitrary = do
-    (Right plan) <- liftM makePlan arbitrary `suchThat` isRight
-    return plan
+    arbitrary = do
+        path <- arbitrary
+        opts <- arbitrary
+        Right plan <- return (makePlan' opts path) `suchThat` isRight
+        return plan
 
 prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
 prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))

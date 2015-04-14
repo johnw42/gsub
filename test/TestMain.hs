@@ -7,9 +7,9 @@ import qualified PlanTest
 
 import Test.Framework (defaultMain)
 
-main = defaultMain [
-  FindReplaceTest.tests,
-  GsubTest.tests,
-  OptionsTest.tests,
-  PlanTest.tests
-  ]
+main = defaultMain
+       [ FindReplaceTest.tests
+       , OptionsTest.tests
+       , PlanTest.tests
+       ,  GsubTest.tests
+       ]

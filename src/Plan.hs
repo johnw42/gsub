@@ -8,6 +8,8 @@ import Control.Monad (liftM)
 import qualified Crypto.Hash.SHA1 as SHA1
 import qualified Data.List as L
 import qualified Data.ByteString.Char8 as B
+import System.Directory (getTemporaryDirectory)
+import System.FilePath ((</>))
 import Text.Printf (printf)
 
 import qualified Text.Regex.PCRE.Heavy as Heavy
@@ -22,8 +24,8 @@ data Transformation
 -- An execution plan.
 data Plan = Plan
     { options :: Options
-    , patchFilePath :: FilePath
     , transformation :: Transformation
+    , patchFilePath :: FilePath
     }
 
 -- A facade for options.
@@ -36,12 +38,18 @@ useFixedStrings = fixedStringsOpt . options
 keepGoing = keepGoingOpt . options
 ignoreCase = ignoreCaseOpt . options
 
-execParseArgsToPlan :: IO (Either String Plan)
-execParseArgsToPlan = makePlan `liftM` execParseArgs
+makePlan :: Options -> IO Plan
+makePlan opts = do
+    tempDir <- getTemporaryDirectory
+    let basename = defaultPatchFileName opts
+        patchPath = tempDir </> basename
+    case makePlan' opts patchPath of
+        Left e -> error e
+        Right plan -> return plan
 
 -- | Converts options into an execution plan.
-makePlan :: Options -> Either String Plan
-makePlan opts = do
+makePlan' :: Options -> FilePath -> Either String Plan
+makePlan' opts path = do
     xfrm <- if fixedStringsOpt opts
             then Right (TransformFixed
                         caseHandling
@@ -50,20 +58,22 @@ makePlan opts = do
             else do
                 regex <- doCompile
                 return $ TransformRegex regex regexReplacement
-    return $ Plan opts
-        (defaultPatchFileName opts)
-        xfrm
-    where
-      caseHandling = if ignoreCaseOpt opts
-                     then IgnoreCase
-                     else ConsiderCase
-      fixedPattern = patternStringOpt opts
-      fixedReplacement = replacementStringOpt opts
-      regexReplacement = parseReplacement $ replacementStringOpt opts
-      pcreOpts = if ignoreCaseOpt opts
-                 then [Light.utf8, Light.caseless]
-                 else [Light.utf8]
-      doCompile = Heavy.compileM (B.pack $ patternStringOpt opts) pcreOpts
+    case patchFilePathOpt opts of
+        Nothing ->
+            return $ Plan opts xfrm path
+        Just path' ->
+            return $ Plan opts xfrm path'
+  where
+    caseHandling = if ignoreCaseOpt opts
+                   then IgnoreCase
+                   else ConsiderCase
+    fixedPattern = patternStringOpt opts
+    fixedReplacement = replacementStringOpt opts
+    regexReplacement = parseReplacement $ replacementStringOpt opts
+    pcreOpts = if ignoreCaseOpt opts
+               then [Light.utf8, Light.caseless]
+               else [Light.utf8]
+    doCompile = Heavy.compileM (B.pack $ patternStringOpt opts) pcreOpts
 
 -- | Converts a ByteString to a string of hexadecimal digits.
 toHexString :: B.ByteString -> String
@@ -81,4 +91,4 @@ hashOptions opts =
             ] ++ filesOpt opts
 
 defaultPatchFileName :: Options -> String
-defaultPatchFileName opts = ".gsub_" ++ (hashOptions opts) ++ ".diff"
+defaultPatchFileName opts = "gsub_" ++ (hashOptions opts) ++ ".diff"

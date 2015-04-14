@@ -184,14 +184,12 @@ processFiles plan = do
 
 appMain :: App ()
 appMain = do
-    planOrError <- liftIO execParseArgsToPlan
-    case planOrError of
-        Left error -> liftIO $ putStrLn error
-        Right plan -> do
-            validateFiles plan
-            unlessErrors $ do
-                processFiles plan
-                unlessErrors $ return ()
+    opts <- liftIO execParseArgs
+    plan <- liftIO $ makePlan opts
+    validateFiles plan
+    unlessErrors $ do
+        processFiles plan
+        unlessErrors $ return ()
 
 main = evalStateT appMain initAppState
   where
