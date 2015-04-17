@@ -105,7 +105,9 @@ transformLineFixed ch needle rep line = loop line
               rep ++ loop (drop (length needle) cs)
         | otherwise = c : loop cs'
     withCase = case ch of
-        IgnoreCase -> map toLower
+        -- Use of uppercase to significant because
+        -- toLower (toUpper '\181') == '\956' !
+        IgnoreCase -> map toUpper
         ConsiderCase -> id
 
 -- | Transforms a line using regex replacement.
