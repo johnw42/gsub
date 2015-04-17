@@ -11,6 +11,7 @@ import Control.Monad.IO.Class
 import Control.Monad.State (StateT, evalStateT, get, put)
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
+import Data.Either
 import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes, fromJust, isJust)
 import Data.Monoid (First(..), mconcat)
@@ -106,28 +107,95 @@ transformLineFixed ch needle rep line = loop line
         IgnoreCase -> map toLower
         ConsiderCase -> id
 
+type MatchRange = ((Int,Int), [(Int,Int)])
+
+-- replaceMatch
+--     :: MatchRange
+--     -> Replacement
+--     -> String
+--     -> Int
+--     -> Either Error String
+-- replaceMatch mr rep s offset = undefined
+--   where
+    
+
+-- replaceMatches
+--     :: [MatchRange]
+--     -> Replacement
+--     -> String
+--     -> Either Error String
+-- replaceMatches mrs rep s = loop mrs s 0
+--   where
+--     loop [] s _ = s
+--     loop (mr@((_,j),_):mrs) s offset =
+--         expandMatch m rep offset : loop mrs (drop (j - offset) s) j
+
+data GroupMatch = GroupMatch {
+    groupStart :: Int,
+    groupEnd :: Int,
+    groupText :: String
+    } deriving (Eq, Show)
+
+expandReplacementWithGroups :: [GroupMatch] -> Replacement -> String
+expandReplacementWithGroups gms rep =
+    let (Right s) = expand (map groupText gms) rep in s
+
+replaceMatchesInString :: String -> [[GroupMatch]] -> Replacement -> String
+replaceMatchesInString s gss rep = loop s 0 gss
+  where
+    loop s _ [] = s
+    loop s offset (gs:gss) =
+        let g = head gs
+            i = groupStart g
+            j = groupEnd g
+            before = take (i - offset) s
+            after = loop (drop (j - offset) s) j gss
+        in before ++ expandReplacementWithGroups gs rep ++ after
+
+-- Convert a series of ranges from PCRE.Heavy into a series of
+-- GroupMatch structures.
+matchRangesToGroups :: [MatchRange] -> String -> [[GroupMatch]]
+matchRangesToGroups mrs s = loop mrs s 0
+  where
+    loop [] _ _ = []
+    loop (mr@((i,j),_):mrs) s offset =
+        assert (offset <= i) $
+        assert (i <= j) $
+        makeGroupMatches s offset mr : loop mrs (drop (j - offset) s) j
+    makeGroupMatches s offset (g0,gs) = map (makeGroupMatch s offset) (g0:gs)
+    makeGroupMatch s offset (i,j) =
+        GroupMatch i j (drop (i - offset) $ take (j - offset) s)
+
 -- | Transforms a line using regex replacement.
 transformLineRegex
     :: Heavy.Regex
     -> Replacement
     -> String
     -> Either Error String
-transformLineRegex regex rep line =
-    foldr eachMatch (Right line) matchRanges
-  where
-    matchRanges = Heavy.scanRanges regex line
-    eachMatch _ (Left e) = Left e
-    eachMatch ((i,j),subs) (Right s) =
-        case expand groups rep of
-            Left e -> Left e
-            Right expansion ->
-                Right (prefix ++ expansion ++ suffix)
-      where
-        prefix = take i s
-        suffix = drop j s
-        groups = map rangeToText groupRanges
-        groupRanges = (i,j):subs
-        rangeToText (i,j) = drop i (take j line)
+transformLineRegex regex rep line = undefined
+  --   replaceMatches mrs rep line
+  -- where
+  --   mrs = Heavy.scanRanges regex line
+    -- ranges' = map convertRange ranges
+    -- convertRange (r,rs) = r:rs
+    -- beforeMatch = case ranges' of
+    --     [] -> line
+    --     r:_ -> take (fst r) line
+    -- replaceMatch 
+    -- eachMatch _ (Left e, _) = Left e
+    -- eachMatch ((i,j),subs) (Right s, offset) =
+    --     case expand groups rep of
+    --         Left e -> (Left e, offset)
+    --         Right expansion ->
+    --             let prefix = take (i - offset) s
+    --                 suffix = drop (j - offset) s in
+    --             Right (prefix ++ expansion ++ suffix)
+    --   where
+    --     prefix = take (i - offset) s
+    --     suffix = drop j s
+    --     groups = map rangeToText groupRanges
+    --     groupRanges = (i,j):subs
+    --     rangeToText (i,j) = drop i (take j line)
 
 -- | Applies the specified transformation to a line of a file.
 transformLine :: Transformation -> String -> Either Error String
