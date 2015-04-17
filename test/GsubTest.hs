@@ -18,25 +18,7 @@ import Test.QuickCheck
 instance Show Plan where
     show p = "Plan {options = " ++ show (options p) ++ "}"
 
-case_matchRangesToGroups =
-    matchRangesToGroups ranges "abcdef" @?= groupMatches
-  where
-    ranges = [
-        ((0,2), [(0,1), (0,2)]),
-        ((3,5), [(4,5), (3,3)])
-        ]
-    groupMatches = [
-        [GroupMatch 0 2 "ab",
-         GroupMatch 0 1 "a",
-         GroupMatch 0 2 "ab"
-        ],
-        [GroupMatch 3 5 "de",
-         GroupMatch 4 5 "e",
-         GroupMatch 3 3 ""]
-        ]
-
 prop_transformLine plan before after =
-    useFixedStrings plan ==>  -- XXX
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
     printTestCase ("transformed: " ++ show result) $
@@ -49,7 +31,6 @@ prop_transformLine plan before after =
           result = transformLine xfrm content
 
 prop_transformFileContent plan before after =
-    useFixedStrings plan ==>  -- XXX
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
     printTestCase (show result') $
@@ -63,7 +44,6 @@ prop_transformFileContent plan before after =
           result' = L8.unpack result
 
 tests = testGroup "Gsub" [
-    testCase "matchRangesToGroups" case_matchRangesToGroups,
-    testProperty "transformLine(XXX)" prop_transformLine,
-    testProperty "transformFileContent(XXX)" prop_transformFileContent
+    testProperty "transformLine" prop_transformLine,
+    testProperty "transformFileContent" prop_transformFileContent
     ]

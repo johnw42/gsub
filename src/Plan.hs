@@ -73,7 +73,8 @@ makePlan' opts path = do
     pcreOpts = if ignoreCaseOpt opts
                then [Light.utf8, Light.caseless]
                else [Light.utf8]
-    compileRegexM = Heavy.compileM (B.pack $ patternStringOpt opts) pcreOpts
+    pattern = "(" ++ patternStringOpt opts ++ ")"
+    compileRegexM = Heavy.compileM (B.pack pattern) pcreOpts
 
 -- | Converts a ByteString to a string of hexadecimal digits.
 toHexString :: B.ByteString -> String

@@ -108,71 +108,10 @@ transformLineFixed ch needle rep line = loop line
         IgnoreCase -> map toLower
         ConsiderCase -> id
 
-type MatchRange = ((Int,Int), [(Int,Int)])
-
--- replaceMatch
---     :: MatchRange
---     -> Replacement
---     -> String
---     -> Int
---     -> Either Error String
--- replaceMatch mr rep s offset = undefined
---   where
-    
-
--- replaceMatches
---     :: [MatchRange]
---     -> Replacement
---     -> String
---     -> Either Error String
--- replaceMatches mrs rep s = loop mrs s 0
---   where
---     loop [] s _ = s
---     loop (mr@((_,j),_):mrs) s offset =
---         expandMatch m rep offset : loop mrs (drop (j - offset) s) j
-
-data GroupMatch = GroupMatch {
-    groupStart :: Int,
-    groupEnd :: Int,
-    groupText :: String
-    } deriving (Eq, Show)
-
-expandReplacementWithGroups :: [GroupMatch] -> Replacement -> String
-expandReplacementWithGroups gms rep = expand (map groupText gms) rep
-
-replaceMatchesInString :: String -> [[GroupMatch]] -> Replacement -> String
-replaceMatchesInString s gss rep = loop s 0 gss
-  where
-    loop s _ [] = s
-    loop s offset (gs:gss) =
-        let g = head gs
-            i = groupStart g
-            j = groupEnd g
-            before = take (i - offset) s
-            after = loop (drop (j - offset) s) j gss
-        in before ++ expandReplacementWithGroups gs rep ++ after
-
--- Convert a series of ranges from PCRE.Heavy into a series of
--- GroupMatch structures.
-matchRangesToGroups :: [MatchRange] -> String -> [[GroupMatch]]
-matchRangesToGroups mrs s = loop mrs s 0
-  where
-    loop [] _ _ = []
-    loop (mr@((i,j),_):mrs) s offset =
-        assert (offset <= i) $
-        assert (i <= j) $
-        makeGroupMatches s offset mr : loop mrs (drop (j - offset) s) j
-    makeGroupMatches s offset (g0,gs) = map (makeGroupMatch s offset) (g0:gs)
-    makeGroupMatch s offset (i,j) =
-        GroupMatch i j (drop (i - offset) $ take (j - offset) s)
-
 -- | Transforms a line using regex replacement.
 transformLineRegex :: Heavy.Regex -> Replacement -> String -> String
 transformLineRegex regex rep line =
-    replaceMatchesInString line groups rep
-  where
-    ranges = Heavy.scanRanges regex line
-    groups = matchRangesToGroups ranges line
+    Heavy.gsub regex (flip expand rep) line
 
 -- | Applies the specified transformation to a line of a file.
 transformLine :: Transformation -> String -> String
