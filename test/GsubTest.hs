@@ -20,6 +20,7 @@ import Test.HUnit
 import Test.QuickCheck
 
 import qualified Text.Regex.PCRE.Heavy as Heavy
+import qualified Text.Regex.PCRE.Light as Light
 
 instance Show Plan where
     show p = "Plan {options = " ++ show (options p) ++ "}"
@@ -62,18 +63,13 @@ prop_transformLineRegex (Alpha patStr) (Alpha repStr) before after =
     not (patStr `isInfixOf` result)
   where
     content = before ++ patStr ++ after
-    result = transformLineRegex regex rep content
+    result = L8.unpack $ transformLineRegex regex rep $ L8.pack content
     Right regex = Heavy.compileM (B8.pack patStr) []
     rep = literalReplacement repStr
 
 prop_transformLine plan before after =
-    planMode plan == RunMode ==>
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
-    printTestCase ("pat: " ++ show pattern) $
-    printTestCase ("rep: " ++ show replacement) $
-    printTestCase ("content: " ++ show content) $
-    printTestCase ("transformed: " ++ show result) $
     replacement `isInfixOf` result' &&
     not (pattern `isInfixOf` result')
   where pattern = patternString plan
@@ -87,7 +83,6 @@ prop_transformLine plan before after =
 prop_transformFileContent plan before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
-    printTestCase ("transformed: " ++ show result') $
     replacement `isInfixOf` result' &&
     not (pattern `isInfixOf` result')
   where pattern = patternString plan
@@ -97,13 +92,7 @@ prop_transformFileContent plan before after =
         result = transformFileContent plan content
         result' = L8.unpack result
 
-case_xxx =
-    Heavy.gsub regex "b" "\253a\158" @?= "\253b\158"
-  where
-    Right regex = Heavy.compileM (B8.pack "a") []
-
 tests = testGroup "Gsub" [
-    testCase "case_xxx" case_xxx,
     testProperty "transformLineFixed1" prop_transformLineFixed1,
     testProperty "transformLineFixed2" prop_transformLineFixed2,
     testProperty "transformLineRegex" prop_transformLineRegex,

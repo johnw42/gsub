@@ -111,7 +111,7 @@ transformLineFixed ch needle rep line = loop line
         ConsiderCase -> id
 
 -- | Transforms a line using regex replacement.
-transformLineRegex :: Heavy.Regex -> Replacement -> String -> String
+transformLineRegex :: Heavy.Regex -> Replacement -> FileContent -> FileContent
 transformLineRegex regex rep line =
     Heavy.gsub regex (expand rep) line
 
@@ -120,7 +120,7 @@ transformLine :: Transformation -> FileContent -> FileContent
 transformLine (TransformFixed ch needle rep) =
     L8.pack . transformLineFixed ch needle rep . L8.unpack
 transformLine (TransformRegex regex rep) =
-    L8.pack . transformLineRegex regex rep . L8.unpack
+    transformLineRegex regex rep
 
 -- | Applies the specified transformation to a whole file's content.
 transformFileContent :: Plan -> FileContent -> FileContent

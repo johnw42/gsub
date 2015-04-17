@@ -71,8 +71,8 @@ makePlan' opts path = do
     fixedReplacement = replacementStringOpt opts
     regexReplacementM = parseReplacement $ replacementStringOpt opts
     pcreOpts = if ignoreCaseOpt opts
-               then [Light.utf8, Light.caseless]
-               else [Light.utf8]
+               then [Light.caseless]
+               else []
     pattern = "(" ++ patternStringOpt opts ++ ")"
     compileRegexM = Heavy.compileM (B8.pack pattern) pcreOpts
 
