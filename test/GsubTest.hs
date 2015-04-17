@@ -62,7 +62,7 @@ prop_transformLineRegex (Alpha patStr) (Alpha repStr) before after =
     not (patStr `isInfixOf` result)
   where
     content = before ++ patStr ++ after
-    result = L8.unpack $ transformLineRegex regex rep (L8.pack content)
+    result = transformLineRegex regex rep content
     Right regex = Heavy.compileM (B8.pack patStr) []
     rep = literalReplacement repStr
 
