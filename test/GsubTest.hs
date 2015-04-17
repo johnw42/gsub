@@ -21,14 +21,16 @@ instance Show Plan where
 prop_transformLine plan before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
-    printTestCase ("transformed: " ++ show result) $
-        replacement `isInfixOf` result &&
-        not (pattern `isInfixOf` result)
+    printTestCase ("transformed: " ++ show result') $
+        replacement `isInfixOf` result' &&
+        not (pattern `isInfixOf` result')
     where pattern = patternString plan
           replacement = replacementString plan
           content = before ++ pattern ++ after
+          content' = L8.pack content
           xfrm = transformation plan
-          result = transformLine xfrm content
+          result = transformLine xfrm content'
+          result' = L8.unpack result
 
 prop_transformFileContent plan before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>

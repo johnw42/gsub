@@ -14,7 +14,7 @@ data Replacement = Rep
 makeReplacement :: [ReplacementPart] -> Replacement
 makeReplacement parts = Rep parts maxGroup
   where
-    maxGroup = maximum $ map partGroupNum parts
+    maxGroup = maximum $ 0 : map partGroupNum parts
     partGroupNum (GroupPart n) = n
     partGroupNum _ = 0
 

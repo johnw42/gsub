@@ -109,23 +109,22 @@ transformLineFixed ch needle rep line = loop line
         ConsiderCase -> id
 
 -- | Transforms a line using regex replacement.
-transformLineRegex :: Heavy.Regex -> Replacement -> String -> String
+transformLineRegex :: Heavy.Regex -> Replacement -> FileContent -> FileContent
 transformLineRegex regex rep line =
     Heavy.gsub regex (flip expand rep) line
 
 -- | Applies the specified transformation to a line of a file.
-transformLine :: Transformation -> String -> String
+transformLine :: Transformation -> FileContent -> FileContent
 transformLine (TransformFixed ch needle rep) =
-    transformLineFixed ch needle rep
+    L8.pack . transformLineFixed ch needle rep . L8.unpack
 transformLine (TransformRegex regex rep) =
     transformLineRegex regex rep
 
 -- | Applies the specified transformation to a whole file's content.
 transformFileContent :: Plan -> FileContent -> FileContent
-transformFileContent plan text = L8.unlines (L8.pack `map` ls')
+transformFileContent plan = L8.unlines . map transform . L8.lines
   where
-    ls = L8.unpack `map` L8.lines text
-    ls' = map (transformLine $ transformation plan) ls
+    transform = transformLine $ transformation plan 
     
 -- | Runs the external diff tool over a pair of files.
 runDiff :: FilePath -> FilePath -> IO PatchData
