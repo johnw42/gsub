@@ -3,6 +3,7 @@ module GsubTest where
 import Gsub
 
 import Plan
+import OptionsTest ()
 import PlanTest ()
 
 import qualified Data.ByteString.Lazy.Char8 as L8
@@ -46,14 +47,14 @@ prop_transformLine plan before after =
     useFixedStrings plan ==>  -- XXX
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
-    printTestCase (show result) $
+    printTestCase ("transformed: " ++ show result) $
         replacement `isInfixOf` result &&
         not (pattern `isInfixOf` result)
     where pattern = patternString plan
           replacement = replacementString plan
           content = before ++ pattern ++ after
           xfrm = transformation plan
-          Right result = transformLine xfrm content
+          result = transformLine xfrm content
 
 prop_transformFileContent plan before after =
     useFixedStrings plan ==>  -- XXX
@@ -66,12 +67,12 @@ prop_transformFileContent plan before after =
           replacement = replacementString plan
           content' = before ++ pattern ++ after
           content = L8.pack content'
-          Right result = transformFileContent plan content
+          result = transformFileContent plan content
           result' = L8.unpack result
 
 tests = testGroup "Gsub" [
   testProperty "transformLineFixed1" prop_transformLineFixed1,
   testProperty "transformLineFixed2" prop_transformLineFixed2,
-  testProperty "transformLine(XXX)" prop_transformLine,
-  testProperty "transformFileContent(XXX)" prop_transformFileContent
-  ]
+    testProperty "transformLine(XXX)" prop_transformLine,
+    testProperty "transformFileContent(XXX)" prop_transformFileContent
+    ]

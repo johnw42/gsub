@@ -1,48 +1,71 @@
 module FindReplace where
 
-import Control.Monad (liftM)
+import Control.Exception
+import Control.Monad (liftM, liftM2)
 import Data.Char (isDigit)
 import Numeric (readDec)
 
 data ReplacementPart = LiteralPart String | GroupPart Int deriving (Show, Eq)
-type Replacement = [ReplacementPart]
+data Replacement = Rep
+    { repParts :: [ReplacementPart]
+    , repMaxGroup :: Int
+    }
+
+makeReplacement :: [ReplacementPart] -> Replacement
+makeReplacement parts = Rep parts maxGroup
+  where
+    maxGroup = maximum $ map partGroupNum parts
+    partGroupNum (GroupPart n) = n
+    partGroupNum _ = 0
 
 literalReplacement :: String -> Replacement
-literalReplacement s = [LiteralPart s]
+literalReplacement "" = makeReplacement []
+literalReplacement s = makeReplacement [LiteralPart s]
 
 -- Parse a replacement string into a data structure, with the following
 -- escape sequences:
 --   \n -> Match group n, where n >= 0
 --   \& -> The empty string.
---   \c -> The literal character c, where c is any character except a digit or
---
--- As a special case, a single \ at the end of a string is dropped.
-parseReplacement :: String -> Replacement
-parseReplacement "" = []
-parseReplacement "\\" = []  -- Yuck!
-parseReplacement ('\\':'&':cs) = parseReplacement cs
-parseReplacement ('\\':'\\':cs) =
-    mergeLiterals $ LiteralPart "\\" : parseReplacement cs
-parseReplacement ('\\':c:cs)
-    | isDigit c = case readDec (c:cs) of
-        [(n, cs')] -> GroupPart n : parseReplacement cs'
-        x -> error $ "parsed " ++ show (c:cs) ++ " as " ++ show x
-    | otherwise = mergeLiterals $ (LiteralPart "\\") : parseReplacement (c:cs)
-parseReplacement (c:cs) = mergeLiterals $ LiteralPart [c] : parseReplacement cs
+--   \\ -> A literal backslash.
+parseReplacement :: String -> Either String Replacement
+parseReplacement = liftM makeReplacement . parseReplacement'
 
--- Normalize a replacement sequence by combining adjacent LiteralParts
--- and merging adjacent LiteralParts.
-mergeLiterals :: Replacement -> Replacement
-mergeLiterals [] = []
-mergeLiterals (LiteralPart a : LiteralPart b : parts) = mergeLiterals (LiteralPart (a ++ b) : parts)
-mergeLiterals (LiteralPart "" : parts) = mergeLiterals parts
-mergeLiterals (part : parts) = part : mergeLiterals parts
+parseReplacement' :: String -> Either String [ReplacementPart]
+parseReplacement' s = loop 0 s
+  where
+    loop _ "" = Right []
+    loop offset "\\" =
+        Left ("unterminated escape sequence at offset " ++ show offset)
+    loop offset ('\\':'&':cs) = loop (offset+2) cs
+    loop offset ('\\':'\\':cs) = consLiteral "\\" (loop (offset+2) cs)
+    loop offset ('\\':c:cs) = case readDec (c:cs) of
+        ((n, cs'):_) ->
+            let offset' = offset + length cs - length cs'
+            in cons (GroupPart n) (loop offset' cs')
+        _ -> Left ("invalid escape sequence at offset " ++ show offset)
+    loop offset (c:cs) = consLiteral [c] (loop (offset+1) cs)
+    cons part parts = liftM2 (:) (Right $ part) parts
+    consLiteral s parts =
+        liftM mergeLiterals $ cons (LiteralPart s) parts
+    
+-- Normalize a replacement sequence by combining adjacent LiteralParts.
+mergeLiterals :: [ReplacementPart] -> [ReplacementPart]
+mergeLiterals = loop
+  where
+    loop [] = []
+    loop (LiteralPart "" : parts) = loop parts
+    loop (LiteralPart a : LiteralPart b : parts) =
+        loop (LiteralPart (a ++ b) : parts)
+    loop (part : parts) = part : loop parts
 
 -- Substitute values into a replacement.
-expand :: [String] -> Replacement -> Either String String
-expand groups parts = liftM concat $ sequence $ map expandGroup parts
+expand :: [String] -> Replacement -> String
+expand groups (Rep parts maxG) =
+    assert (not $ null $ drop maxG groups) $
+    expand' groups parts
+
+expand' :: [String] -> [ReplacementPart] -> String
+expand' groups parts = concatMap expandGroup parts
   where
-    expandGroup (LiteralPart s) = Right s
-    expandGroup (GroupPart n) = case drop n groups of
-      (g:_) -> Right g
-      _ -> Left $ "no such group: " ++ show n
+    expandGroup (LiteralPart s) = s
+    expandGroup (GroupPart n) = groups !! n

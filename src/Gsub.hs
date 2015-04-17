@@ -11,10 +11,12 @@ import Control.Monad.IO.Class
 import Control.Monad.State (StateT, evalStateT, get, put)
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
+import Data.Either
 import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes, fromJust, isJust)
 import Data.Monoid (First(..), mconcat)
 import System.Directory
+import System.Exit
 import System.IO
 import System.Process (readProcess)
 
@@ -46,13 +48,13 @@ addAppError p e = do
     put app { appErrors = FileError p e : appErrors app }
 
 -- | Prints errors and if there are any, otherwise executes an action.
-unlessErrors :: App () -> App ()
-unlessErrors action = do
+exitIfErrors :: App ()
+exitIfErrors = do
     app <- get
     let errors = appErrors app
-    if null errors
-        then mapM_ (liftIO . print) (reverse errors)
-        else action
+    unless (null errors) $ do
+        mapM_ (liftIO . print) (reverse errors)
+        liftIO $ exitWith (ExitFailure 1)
 
 -- | Tests whether a file can be operated on.  Adds an error if it
 -- can't be.
@@ -108,42 +110,85 @@ transformLineFixed ch needle rep line = loop line
         IgnoreCase -> map toUpper
         ConsiderCase -> id
 
--- | Transforms a line using regex replacement.
-transformLineRegex
-    :: Heavy.Regex
-    -> Replacement
-    -> String
-    -> Either Error String
-transformLineRegex regex rep line =
-    foldr eachMatch (Right line) matchRanges
+type MatchRange = ((Int,Int), [(Int,Int)])
+
+-- replaceMatch
+--     :: MatchRange
+--     -> Replacement
+--     -> String
+--     -> Int
+--     -> Either Error String
+-- replaceMatch mr rep s offset = undefined
+--   where
+    
+
+-- replaceMatches
+--     :: [MatchRange]
+--     -> Replacement
+--     -> String
+--     -> Either Error String
+-- replaceMatches mrs rep s = loop mrs s 0
+--   where
+--     loop [] s _ = s
+--     loop (mr@((_,j),_):mrs) s offset =
+--         expandMatch m rep offset : loop mrs (drop (j - offset) s) j
+
+data GroupMatch = GroupMatch {
+    groupStart :: Int,
+    groupEnd :: Int,
+    groupText :: String
+    } deriving (Eq, Show)
+
+expandReplacementWithGroups :: [GroupMatch] -> Replacement -> String
+expandReplacementWithGroups gms rep = expand (map groupText gms) rep
+
+replaceMatchesInString :: String -> [[GroupMatch]] -> Replacement -> String
+replaceMatchesInString s gss rep = loop s 0 gss
   where
-    matchRanges = Heavy.scanRanges regex line
-    eachMatch _ (Left e) = Left e
-    eachMatch ((i,j),subs) (Right s) =
-        case expand groups rep of
-            Left e -> Left e
-            Right expansion ->
-                Right (prefix ++ expansion ++ suffix)
-      where
-        prefix = take i s
-        suffix = drop j s
-        groups = map rangeToText groupRanges
-        groupRanges = (i,j):subs
-        rangeToText (i,j) = drop i (take j line)
+    loop s _ [] = s
+    loop s offset (gs:gss) =
+        let g = head gs
+            i = groupStart g
+            j = groupEnd g
+            before = take (i - offset) s
+            after = loop (drop (j - offset) s) j gss
+        in before ++ expandReplacementWithGroups gs rep ++ after
+
+-- Convert a series of ranges from PCRE.Heavy into a series of
+-- GroupMatch structures.
+matchRangesToGroups :: [MatchRange] -> String -> [[GroupMatch]]
+matchRangesToGroups mrs s = loop mrs s 0
+  where
+    loop [] _ _ = []
+    loop (mr@((i,j),_):mrs) s offset =
+        assert (offset <= i) $
+        assert (i <= j) $
+        makeGroupMatches s offset mr : loop mrs (drop (j - offset) s) j
+    makeGroupMatches s offset (g0,gs) = map (makeGroupMatch s offset) (g0:gs)
+    makeGroupMatch s offset (i,j) =
+        GroupMatch i j (drop (i - offset) $ take (j - offset) s)
+
+-- | Transforms a line using regex replacement.
+transformLineRegex :: Heavy.Regex -> Replacement -> String -> String
+transformLineRegex regex rep line =
+    replaceMatchesInString line groups rep
+  where
+    ranges = Heavy.scanRanges regex line
+    groups = matchRangesToGroups ranges line
 
 -- | Applies the specified transformation to a line of a file.
-transformLine :: Transformation -> String -> Either Error String
+transformLine :: Transformation -> String -> String
 transformLine (TransformFixed ch needle rep) =
-    Right . transformLineFixed ch needle rep
+    transformLineFixed ch needle rep
 transformLine (TransformRegex regex rep) =
     transformLineRegex regex rep
 
 -- | Applies the specified transformation to a whole file's content.
-transformFileContent :: Plan -> FileContent -> Either Error FileContent
-transformFileContent plan text = do
-    let ls = L8.unpack `map` L8.lines text
-    tls <- forM ls (transformLine $ transformation plan)
-    return $ L8.unlines (L8.pack `map` tls)
+transformFileContent :: Plan -> FileContent -> FileContent
+transformFileContent plan text = L8.unlines (L8.pack `map` ls')
+  where
+    ls = L8.unpack `map` L8.lines text
+    ls' = map (transformLine $ transformation plan) ls
     
 -- | Runs the external diff tool over a pair of files.
 runDiff :: FilePath -> FilePath -> IO PatchData
@@ -185,19 +230,15 @@ processSingleFile :: Plan -> FilePath -> App PatchData
 processSingleFile plan path = do
     diffPath <- liftIO $ getDiffPath (patchFilePath plan)
     oldContent <- liftIO $ L8.readFile path
-    case transformFileContent plan oldContent of
-        Left e -> do
-            addAppError path e
-            return ""
-        Right newContent ->
-            liftIO $ withSystemTempFile "gsub.tmp" $
-            \tempPath tempH -> do
-                L8.hPut tempH newContent
-                hClose tempH
-                patch <- runDiff path tempPath
-                unless (null patch) $ do
-                    copyFile tempPath path
-                return patch
+    let newContent = transformFileContent plan oldContent
+    liftIO $ withSystemTempFile "gsub.tmp" $
+        \tempPath tempH -> do
+            L8.hPut tempH newContent
+            hClose tempH
+            patch <- runDiff path tempPath
+            unless (null patch) $
+                copyFile tempPath path
+            return patch
 
 -- | Processes all the files in the plan.
 processFiles :: Plan -> App ()
@@ -214,9 +255,9 @@ appMain = do
     opts <- liftIO execParseArgs
     plan <- liftIO $ makePlan opts
     validateFiles plan
-    unlessErrors $ do
-        processFiles plan
-        unlessErrors $ return ()
+    exitIfErrors
+    processFiles plan
+    exitIfErrors
 
 main = evalStateT appMain initAppState
   where

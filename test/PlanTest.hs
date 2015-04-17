@@ -17,6 +17,11 @@ instance Arbitrary Plan where
         opts <- arbitrary
         Right plan <- return (makePlan' opts path) `suchThat` isRight
         return plan
+    shrink plan = do
+        opts <- shrink $ options plan
+        path <- shrink $ patchFilePath plan
+        Right plan <- return (makePlan' opts path)
+        return plan
 
 prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
 prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
