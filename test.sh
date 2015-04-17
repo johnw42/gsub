@@ -11,7 +11,10 @@ cleanup() {
 }
 
 run() {
-  $test_bin "$@" &>$tmp_dir/stdout.txt || true
+  set +e
+  $test_bin "$@" &>$tmp_dir/stdout.txt
+  echo $? >>$tmp_dir/stdout.txt
+  set -e
 }
 
 check_stderr() {
@@ -29,11 +32,13 @@ main() {
   check_stderr <<EOF
 $tmp_dir: is a directory
 $tmp_dir/no_such_file: no such file
+1
 EOF
 
   run 'a' '\1' $tmp_dir/a
   check_stderr <<EOF
 hs-gsub: pattern has fewer than 1 groups
+1
 EOF
 }
 

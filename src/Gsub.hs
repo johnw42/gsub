@@ -16,6 +16,7 @@ import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes, fromJust, isJust)
 import Data.Monoid (First(..), mconcat)
 import System.Directory
+import System.Exit
 import System.IO
 import System.Process (readProcess)
 
@@ -47,13 +48,13 @@ addAppError p e = do
     put app { appErrors = FileError p e : appErrors app }
 
 -- | Prints errors and if there are any, otherwise executes an action.
-unlessErrors :: App () -> App ()
-unlessErrors action = do
+exitIfErrors :: App ()
+exitIfErrors = do
     app <- get
     let errors = appErrors app
-    if null errors
-        then action
-        else mapM_ (liftIO . print) (reverse errors)
+    unless (null errors) $ do
+        mapM_ (liftIO . print) (reverse errors)
+        liftIO $ exitWith (ExitFailure 1)
 
 -- | Tests whether a file can be operated on.  Adds an error if it
 -- can't be.
@@ -279,9 +280,9 @@ appMain = do
     opts <- liftIO execParseArgs
     plan <- liftIO $ makePlan opts
     validateFiles plan
-    unlessErrors $ do
-        processFiles plan
-        unlessErrors $ return ()
+    exitIfErrors
+    processFiles plan
+    exitIfErrors
 
 main = evalStateT appMain initAppState
   where
