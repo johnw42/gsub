@@ -4,7 +4,7 @@ import FindReplace
 import Options
 import Utils
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, liftM2)
 import qualified Crypto.Hash.SHA1 as SHA1
 import qualified Data.List as L
 import qualified Data.ByteString.Char8 as B
@@ -55,9 +55,7 @@ makePlan' opts path = do
                         caseHandling
                         fixedPattern
                         fixedReplacement)
-            else do
-                regex <- doCompile
-                return $ TransformRegex regex regexReplacement
+            else liftM2 TransformRegex compileRegex regexReplacement
     case patchFilePathOpt opts of
         Nothing ->
             return $ Plan opts xfrm path
@@ -73,7 +71,7 @@ makePlan' opts path = do
     pcreOpts = if ignoreCaseOpt opts
                then [Light.utf8, Light.caseless]
                else [Light.utf8]
-    doCompile = Heavy.compileM (B.pack $ patternStringOpt opts) pcreOpts
+    compileRegex = Heavy.compileM (B.pack $ patternStringOpt opts) pcreOpts
 
 -- | Converts a ByteString to a string of hexadecimal digits.
 toHexString :: B.ByteString -> String

@@ -79,10 +79,10 @@ prop_parseReplacement r =
     in printTestCase ("r'     " ++ show r') $
        printTestCase ("shown  " ++ show shown) $
        printTestCase ("parsed " ++ show parsed) $
-       parsed == r'
+       parsed == Right r'
 
 case_parseReplacement0 =
-  parseReplacement "\\0.1" @?= [GroupPart 0,LiteralPart ".1"]
+  parseReplacement "\\0.1" @?= Right [GroupPart 0,LiteralPart ".1"]
 
 tests = testGroup "FindReplace" [
   testProperty "mergeLiterals1" prop_mergeLiterals1,

@@ -1,6 +1,6 @@
 module FindReplace where
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, liftM2)
 import Data.Char (isDigit)
 import Numeric (readDec)
 
@@ -14,21 +14,22 @@ literalReplacement s = [LiteralPart s]
 -- escape sequences:
 --   \n -> Match group n, where n >= 0
 --   \& -> The empty string.
---   \c -> The literal character c, where c is any character except a digit or
---
--- As a special case, a single \ at the end of a string is dropped.
-parseReplacement :: String -> Replacement
-parseReplacement "" = []
-parseReplacement "\\" = []  -- Yuck!
+parseReplacement :: String -> Either String Replacement
+parseReplacement "" = Right []
+parseReplacement "\\" = Left "unterminated escape sequence in replacement"
 parseReplacement ('\\':'&':cs) = parseReplacement cs
 parseReplacement ('\\':'\\':cs) =
-    mergeLiterals $ LiteralPart "\\" : parseReplacement cs
+    liftM mergeLiterals $
+        liftM2 (:) (Right $ LiteralPart "\\") (parseReplacement cs)
 parseReplacement ('\\':c:cs)
     | isDigit c = case readDec (c:cs) of
-        [(n, cs')] -> GroupPart n : parseReplacement cs'
+        [(n, cs')] ->
+            liftM2 (:) (Right $ GroupPart n) (parseReplacement cs')
         x -> error $ "parsed " ++ show (c:cs) ++ " as " ++ show x
-    | otherwise = mergeLiterals $ (LiteralPart "\\") : parseReplacement (c:cs)
-parseReplacement (c:cs) = mergeLiterals $ LiteralPart [c] : parseReplacement cs
+    | otherwise = Left "invalid escape sequence in replacement"
+parseReplacement (c:cs) =
+    liftM mergeLiterals $
+        liftM2 (:) (Right $ LiteralPart [c]) (parseReplacement cs)
 
 -- Normalize a replacement sequence by combining adjacent LiteralParts
 -- and merging adjacent LiteralParts.
