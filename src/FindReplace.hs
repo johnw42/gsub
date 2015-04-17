@@ -14,23 +14,22 @@ literalReplacement s = [LiteralPart s]
 -- escape sequences:
 --   \n -> Match group n, where n >= 0
 --   \& -> The empty string.
+--   \\ -> A literal backslash.
 parseReplacement :: String -> Either String Replacement
-parseReplacement "" = Right []
-parseReplacement "\\" = Left "unterminated escape sequence in replacement"
-parseReplacement ('\\':'&':cs) = parseReplacement cs
-parseReplacement ('\\':'\\':cs) =
-    liftM mergeLiterals $
-        liftM2 (:) (Right $ LiteralPart "\\") (parseReplacement cs)
-parseReplacement ('\\':c:cs)
-    | isDigit c = case readDec (c:cs) of
-        [(n, cs')] ->
-            liftM2 (:) (Right $ GroupPart n) (parseReplacement cs')
-        x -> error $ "parsed " ++ show (c:cs) ++ " as " ++ show x
-    | otherwise = Left "invalid escape sequence in replacement"
-parseReplacement (c:cs) =
-    liftM mergeLiterals $
-        liftM2 (:) (Right $ LiteralPart [c]) (parseReplacement cs)
-
+parseReplacement s = loop s
+  where
+    loop "" = Right []
+    loop "\\" = Left "unterminated escape sequence"
+    loop ('\\':'&':cs) = parseReplacement cs
+    loop ('\\':'\\':cs) = consLiteral "\\" (loop cs)
+    loop ('\\':c:cs) = case readDec (c:cs) of
+        ((n, cs'):_) -> cons (GroupPart n) (loop cs')
+        _ -> Left "invalid escape sequence"
+    loop (c:cs) = consLiteral [c] (loop cs)
+    cons part parts = liftM2 (:) (Right $ part) parts
+    consLiteral s parts =
+        liftM mergeLiterals $ cons (LiteralPart s) parts
+    
 -- Normalize a replacement sequence by combining adjacent LiteralParts
 -- and merging adjacent LiteralParts.
 mergeLiterals :: Replacement -> Replacement
