@@ -7,7 +7,7 @@ import Utils
 import Control.Monad (liftM, liftM2)
 import qualified Crypto.Hash.SHA1 as SHA1
 import qualified Data.List as L
-import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Char8 as B8
 import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
 import Text.Printf (printf)
@@ -74,15 +74,15 @@ makePlan' opts path = do
                then [Light.utf8, Light.caseless]
                else [Light.utf8]
     pattern = "(" ++ patternStringOpt opts ++ ")"
-    compileRegexM = Heavy.compileM (B.pack pattern) pcreOpts
+    compileRegexM = Heavy.compileM (B8.pack pattern) pcreOpts
 
 -- | Converts a ByteString to a string of hexadecimal digits.
-toHexString :: B.ByteString -> String
-toHexString = concat . map (printf "%02x") . B.unpack
+toHexString :: B8.ByteString -> String
+toHexString = concat . map (printf "%02x") . B8.unpack
 
 hashOptions :: Options -> String
 hashOptions opts = 
-    toHexString $ SHA1.hash $ B.pack $ L.intercalate "\0" planStrings
+    toHexString $ SHA1.hash $ B8.pack $ L.intercalate "\0" planStrings
     where
         planStrings =
             [ patternStringOpt opts

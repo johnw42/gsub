@@ -1,4 +1,4 @@
-module OptionsTest (tests) where
+module OptionsTest where
 
 import Options
 
@@ -17,8 +17,8 @@ import Test.QuickCheck
 
 instance Arbitrary Options where
     arbitrary = Options 
-        <$> arbSafeString
-        <*> arbSafeString
+        <$> fmap fromAlpha arbitrary
+        <*> fmap fromAlpha arbitrary
         <*> arbitrary
         <*> elements [RunMode, DryRunMode, DiffMode, UndoMode]
         <*> arbitrary
@@ -46,10 +46,13 @@ instance Arbitrary Options where
 type FlagPart = String
 type PosArg = String
 
--- | Generator for an arbitrary string that is a valid regex pattern
--- and a valid replacement pattern.
-arbSafeString :: Gen String
-arbSafeString = listOf1 (elements ['a'..'z'])
+-- Type of strings of letters.
+newtype AlphaString = Alpha { fromAlpha :: String } deriving Show
+type RegexPattern = AlphaString
+type ReplacementPattern = AlphaString
+
+instance Arbitrary AlphaString where
+    arbitrary = Alpha <$> listOf1 (elements ['a'..'z'])
 
 -- | Generator for arbitrary positional arguments.
 arbPosArg :: Gen PosArg

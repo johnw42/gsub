@@ -113,7 +113,7 @@ transformLineFixed ch needle rep line = loop line
 -- | Transforms a line using regex replacement.
 transformLineRegex :: Heavy.Regex -> Replacement -> FileContent -> FileContent
 transformLineRegex regex rep line =
-    Heavy.gsub regex (flip expand rep) line
+    Heavy.gsub regex (expand rep) line
 
 -- | Applies the specified transformation to a line of a file.
 transformLine :: Transformation -> FileContent -> FileContent

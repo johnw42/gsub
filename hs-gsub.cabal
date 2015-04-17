@@ -61,6 +61,8 @@ library
                      , mtl
                      , optparse-applicative
                      , pcre-heavy
+                     , pcre-heavy >= 0.2.2
+                     , pcre-heavy >= 0.2.2
                      , pcre-light
                      , process
                      , random
@@ -78,12 +80,13 @@ test-suite gsub-test
   type:                exitcode-stdio-1.0
   main-is:             TestMain.hs
   hs-source-dirs:      test
-  build-depends:       hs-gsub,
-                       HUnit,
-                       QuickCheck,
-                       base,
-                       bytestring,
-                       random,
-                       test-framework,
-                       test-framework-quickcheck2,
-                       test-framework-hunit
+  build-depends:       HUnit
+                     , QuickCheck
+                     , base
+                     , bytestring
+                     , hs-gsub
+                     , pcre-heavy >= 0.2.2
+                     , random
+                     , test-framework
+                     , test-framework-hunit
+                     , test-framework-quickcheck2
