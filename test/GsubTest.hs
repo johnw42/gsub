@@ -35,7 +35,7 @@ prop_transformLine plan before after =
 prop_transformFileContent plan before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
-    printTestCase (show result') $
+    printTestCase ("transformed: " ++ show result') $
         replacement `isInfixOf` result' &&
         not (pattern `isInfixOf` result')
     where pattern = patternString plan
