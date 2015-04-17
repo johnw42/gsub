@@ -16,16 +16,19 @@ literalReplacement s = [LiteralPart s]
 --   \& -> The empty string.
 --   \\ -> A literal backslash.
 parseReplacement :: String -> Either String Replacement
-parseReplacement s = loop s
+parseReplacement s = loop 0 s
   where
-    loop "" = Right []
-    loop "\\" = Left "unterminated escape sequence"
-    loop ('\\':'&':cs) = parseReplacement cs
-    loop ('\\':'\\':cs) = consLiteral "\\" (loop cs)
-    loop ('\\':c:cs) = case readDec (c:cs) of
-        ((n, cs'):_) -> cons (GroupPart n) (loop cs')
-        _ -> Left "invalid escape sequence"
-    loop (c:cs) = consLiteral [c] (loop cs)
+    loop _ "" = Right []
+    loop offset "\\" =
+        Left ("unterminated escape sequence at offset " ++ show offset)
+    loop offset ('\\':'&':cs) = loop (offset+2) cs
+    loop offset ('\\':'\\':cs) = consLiteral "\\" (loop (offset+2) cs)
+    loop offset ('\\':c:cs) = case readDec (c:cs) of
+        ((n, cs'):_) ->
+            let offset' = offset + length cs - length cs'
+            in cons (GroupPart n) (loop offset' cs')
+        _ -> Left ("invalid escape sequence at offset " ++ show offset)
+    loop offset (c:cs) = consLiteral [c] (loop (offset+1) cs)
     cons part parts = liftM2 (:) (Right $ part) parts
     consLiteral s parts =
         liftM mergeLiterals $ cons (LiteralPart s) parts
