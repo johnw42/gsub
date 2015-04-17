@@ -167,49 +167,26 @@ matchRangesToGroups mrs s = loop mrs s 0
         GroupMatch i j (drop (i - offset) $ take (j - offset) s)
 
 -- | Transforms a line using regex replacement.
-transformLineRegex
-    :: Heavy.Regex
-    -> Replacement
-    -> String
-    -> Either Error String
-transformLineRegex regex rep line = undefined
-  --   replaceMatches mrs rep line
-  -- where
-  --   mrs = Heavy.scanRanges regex line
-    -- ranges' = map convertRange ranges
-    -- convertRange (r,rs) = r:rs
-    -- beforeMatch = case ranges' of
-    --     [] -> line
-    --     r:_ -> take (fst r) line
-    -- replaceMatch 
-    -- eachMatch _ (Left e, _) = Left e
-    -- eachMatch ((i,j),subs) (Right s, offset) =
-    --     case expand groups rep of
-    --         Left e -> (Left e, offset)
-    --         Right expansion ->
-    --             let prefix = take (i - offset) s
-    --                 suffix = drop (j - offset) s in
-    --             Right (prefix ++ expansion ++ suffix)
-    --   where
-    --     prefix = take (i - offset) s
-    --     suffix = drop j s
-    --     groups = map rangeToText groupRanges
-    --     groupRanges = (i,j):subs
-    --     rangeToText (i,j) = drop i (take j line)
+transformLineRegex :: Heavy.Regex -> Replacement -> String -> String
+transformLineRegex regex rep line =
+    replaceMatchesInString line groups rep
+  where
+    ranges = Heavy.scanRanges regex line
+    groups = matchRangesToGroups ranges line
 
 -- | Applies the specified transformation to a line of a file.
-transformLine :: Transformation -> String -> Either Error String
+transformLine :: Transformation -> String -> String
 transformLine (TransformFixed ch needle rep) =
-    Right . transformLineFixed ch needle rep
+    transformLineFixed ch needle rep
 transformLine (TransformRegex regex rep) =
     transformLineRegex regex rep
 
 -- | Applies the specified transformation to a whole file's content.
-transformFileContent :: Plan -> FileContent -> Either Error FileContent
-transformFileContent plan text = do
-    let ls = L8.unpack `map` L8.lines text
-    tls <- forM ls (transformLine $ transformation plan)
-    return $ L8.unlines (L8.pack `map` tls)
+transformFileContent :: Plan -> FileContent -> FileContent
+transformFileContent plan text = L8.unlines (L8.pack `map` ls')
+  where
+    ls = L8.unpack `map` L8.lines text
+    ls' = map (transformLine $ transformation plan) ls
     
 -- | Runs the external diff tool over a pair of files.
 runDiff :: FilePath -> FilePath -> IO PatchData
@@ -251,19 +228,15 @@ processSingleFile :: Plan -> FilePath -> App PatchData
 processSingleFile plan path = do
     diffPath <- liftIO $ getDiffPath (patchFilePath plan)
     oldContent <- liftIO $ L8.readFile path
-    case transformFileContent plan oldContent of
-        Left e -> do
-            addAppError path e
-            return ""
-        Right newContent ->
-            liftIO $ withSystemTempFile "gsub.tmp" $
-            \tempPath tempH -> do
-                L8.hPut tempH newContent
-                hClose tempH
-                patch <- runDiff path tempPath
-                unless (null patch) $ do
-                    copyFile tempPath path
-                return patch
+    let newContent = transformFileContent plan oldContent
+    liftIO $ withSystemTempFile "gsub.tmp" $
+        \tempPath tempH -> do
+            L8.hPut tempH newContent
+            hClose tempH
+            patch <- runDiff path tempPath
+            unless (null patch) $
+                copyFile tempPath path
+            return patch
 
 -- | Processes all the files in the plan.
 processFiles :: Plan -> App ()

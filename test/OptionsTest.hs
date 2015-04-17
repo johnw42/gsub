@@ -27,6 +27,21 @@ instance Arbitrary Options where
         <*> arbitrary
         <*> arbitrary
         <*> arbitrary
+    shrink opts = do
+        files <- shrink $ filesOpt opts
+        bs <- shrink $ backupSuffixOpt opts
+        undoDir <- shrink $ undoDirOpt opts
+        pfp <- shrink $ patchFilePathOpt opts
+        ps <- shrink $ patternStringOpt opts
+        rs <- shrink $ replacementStringOpt opts
+        return $ opts {
+            filesOpt = files,
+            patternStringOpt = ps,
+            replacementStringOpt = rs,
+            backupSuffixOpt = bs,
+            undoDirOpt = undoDir,
+            patchFilePathOpt = pfp
+            }
 
 type FlagPart = String
 type PosArg = String
