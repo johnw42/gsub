@@ -39,12 +39,10 @@ prop_expand before after =
   where
     testGroups = ["<group" ++ (show n) ++ ">" | n <- [0..]]
     inner n k =
-      (label "The empty replacement works.")
-      (once $ expand testGroups [] ==? Right "") .&&.
-      (label "Valid groups are replaced.")
-      (expand testGroups replacement ==? Right expected) .&&.
-      (label "Invalid group numbers trigger and error.")
-      (expand (take n testGroups) replacement ==? Left ("no such group: " ++ show n'))
+        (label "The empty replacement works.")
+        (once $ expand' testGroups [] ==? "") .&&.
+        (label "Valid groups are replaced.")
+        (expand' testGroups replacement ==? expected)
       where
         n' = n + k
         expected = before ++ (testGroups !! n') ++ after
@@ -75,14 +73,14 @@ showReplacement = concatMap showPart . tails
 prop_parseReplacement r =
     let r' = mergeLiterals r
         shown = showReplacement r'
-        parsed = parseReplacement shown
+        parsed = parseReplacement' shown
     in printTestCase ("r'     " ++ show r') $
        printTestCase ("shown  " ++ show shown) $
        printTestCase ("parsed " ++ show parsed) $
        parsed == Right r'
 
 case_parseReplacement0 =
-  parseReplacement "\\0.1" @?= Right [GroupPart 0,LiteralPart ".1"]
+    parseReplacement' "\\0.1" @?= Right [GroupPart 0, LiteralPart ".1"]
 
 tests = testGroup "FindReplace" [
   testProperty "mergeLiterals1" prop_mergeLiterals1,

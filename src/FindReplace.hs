@@ -1,14 +1,26 @@
 module FindReplace where
 
+import Control.Exception
 import Control.Monad (liftM, liftM2)
 import Data.Char (isDigit)
 import Numeric (readDec)
 
 data ReplacementPart = LiteralPart String | GroupPart Int deriving (Show, Eq)
-type Replacement = [ReplacementPart]
+data Replacement = Rep
+    { repParts :: [ReplacementPart]
+    , repMaxGroup :: Int
+    }
+
+makeReplacement :: [ReplacementPart] -> Replacement
+makeReplacement parts = Rep parts maxGroup
+  where
+    maxGroup = maximum $ map partGroupNum parts
+    partGroupNum (GroupPart n) = n
+    partGroupNum _ = 0
 
 literalReplacement :: String -> Replacement
-literalReplacement s = [LiteralPart s]
+literalReplacement "" = makeReplacement []
+literalReplacement s = makeReplacement [LiteralPart s]
 
 -- Parse a replacement string into a data structure, with the following
 -- escape sequences:
@@ -16,7 +28,10 @@ literalReplacement s = [LiteralPart s]
 --   \& -> The empty string.
 --   \\ -> A literal backslash.
 parseReplacement :: String -> Either String Replacement
-parseReplacement s = loop 0 s
+parseReplacement = liftM makeReplacement . parseReplacement'
+
+parseReplacement' :: String -> Either String [ReplacementPart]
+parseReplacement' s = loop 0 s
   where
     loop _ "" = Right []
     loop offset "\\" =
@@ -33,19 +48,24 @@ parseReplacement s = loop 0 s
     consLiteral s parts =
         liftM mergeLiterals $ cons (LiteralPart s) parts
     
--- Normalize a replacement sequence by combining adjacent LiteralParts
--- and merging adjacent LiteralParts.
-mergeLiterals :: Replacement -> Replacement
-mergeLiterals [] = []
-mergeLiterals (LiteralPart a : LiteralPart b : parts) = mergeLiterals (LiteralPart (a ++ b) : parts)
-mergeLiterals (LiteralPart "" : parts) = mergeLiterals parts
-mergeLiterals (part : parts) = part : mergeLiterals parts
+-- Normalize a replacement sequence by combining adjacent LiteralParts.
+mergeLiterals :: [ReplacementPart] -> [ReplacementPart]
+mergeLiterals = loop
+  where
+    loop [] = []
+    loop (LiteralPart "" : parts) = loop parts
+    loop (LiteralPart a : LiteralPart b : parts) =
+        loop (LiteralPart (a ++ b) : parts)
+    loop (part : parts) = part : loop parts
 
 -- Substitute values into a replacement.
-expand :: [String] -> Replacement -> Either String String
-expand groups parts = liftM concat $ sequence $ map expandGroup parts
+expand :: [String] -> Replacement -> String
+expand groups (Rep parts maxG) =
+    assert (not $ null $ drop maxG groups) $
+    expand' groups parts
+
+expand' :: [String] -> [ReplacementPart] -> String
+expand' groups parts = concatMap expandGroup parts
   where
-    expandGroup (LiteralPart s) = Right s
-    expandGroup (GroupPart n) = case drop n groups of
-      (g:_) -> Right g
-      _ -> Left $ "no such group: " ++ show n
+    expandGroup (LiteralPart s) = s
+    expandGroup (GroupPart n) = groups !! n

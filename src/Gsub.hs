@@ -137,8 +137,7 @@ data GroupMatch = GroupMatch {
     } deriving (Eq, Show)
 
 expandReplacementWithGroups :: [GroupMatch] -> Replacement -> String
-expandReplacementWithGroups gms rep =
-    let (Right s) = expand (map groupText gms) rep in s
+expandReplacementWithGroups gms rep = expand (map groupText gms) rep
 
 replaceMatchesInString :: String -> [[GroupMatch]] -> Replacement -> String
 replaceMatchesInString s gss rep = loop s 0 gss
