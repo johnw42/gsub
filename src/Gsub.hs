@@ -52,8 +52,8 @@ unlessErrors action = do
     app <- get
     let errors = appErrors app
     if null errors
-        then mapM_ (liftIO . print) (reverse errors)
-        else action
+        then action
+        else mapM_ (liftIO . print) (reverse errors)
 
 -- | Tests whether a file can be operated on.  Adds an error if it
 -- can't be.

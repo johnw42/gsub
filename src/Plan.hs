@@ -51,27 +51,29 @@ makePlan opts = do
 makePlan' :: Options -> FilePath -> Either String Plan
 makePlan' opts path = do
     xfrm <- if fixedStringsOpt opts
-            then Right (TransformFixed
-                        caseHandling
-                        fixedPattern
-                        fixedReplacement)
-            else liftM2 TransformRegex compileRegex regexReplacement
-    case patchFilePathOpt opts of
-        Nothing ->
-            return $ Plan opts xfrm path
-        Just path' ->
-            return $ Plan opts xfrm path'
+            then Right fixed
+            else checkRegex compileRegexM regexReplacementM
+    return $ Plan opts xfrm patchFilePath
   where
+    patchFilePath = maybe path id (patchFilePathOpt opts)
+    fixed = TransformFixed caseHandling fixedPattern fixedReplacement
+    checkRegex reM repM = do
+        re <- reM
+        rep <- repM
+        if Light.captureCount re >= repMaxGroup rep
+            then Right $ TransformRegex re rep
+            else Left ("pattern has fewer than " ++
+                       show (repMaxGroup rep) ++ " groups")
     caseHandling = if ignoreCaseOpt opts
                    then IgnoreCase
                    else ConsiderCase
     fixedPattern = patternStringOpt opts
     fixedReplacement = replacementStringOpt opts
-    regexReplacement = parseReplacement $ replacementStringOpt opts
+    regexReplacementM = parseReplacement $ replacementStringOpt opts
     pcreOpts = if ignoreCaseOpt opts
                then [Light.utf8, Light.caseless]
                else [Light.utf8]
-    compileRegex = Heavy.compileM (B.pack $ patternStringOpt opts) pcreOpts
+    compileRegexM = Heavy.compileM (B.pack $ patternStringOpt opts) pcreOpts
 
 -- | Converts a ByteString to a string of hexadecimal digits.
 toHexString :: B.ByteString -> String
