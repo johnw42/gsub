@@ -5,13 +5,13 @@ import FindReplace
 import Options
 import Plan
 
+import Control.Applicative
 import Control.Exception
 import Control.Monad (foldM, forM, liftM, unless, when)
-import Control.Monad.IO.Class
-import Control.Monad.State (StateT, evalStateT, get, put)
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
 import Data.Either
+import Data.IORef
 import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes, fromJust, isJust)
 import Data.Monoid (First(..), mconcat)
@@ -31,38 +31,33 @@ instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
 
 data AppState = AppState {
-    appErrors :: [FileError],
-    touchedFiles :: [FilePath]
+    fileErrors :: IORef [FileError],
+    touchedFiles :: IORef [FilePath]
     }
 
-type App a = StateT AppState IO a
+addTouchedFile :: AppState -> FilePath -> IO ()
+addTouchedFile app path =
+    modifyIORef (touchedFiles app) (path :)
 
-addTouchedFile :: FilePath -> App ()
-addTouchedFile path = do
-    app <- get
-    put app { touchedFiles = path : touchedFiles app }
-
-addAppError :: FilePath -> Error -> App ()
-addAppError p e = do
-    app <- get
-    put app { appErrors = FileError p e : appErrors app }
+addFileError :: AppState -> FilePath -> Error -> IO ()
+addFileError app p e =
+    modifyIORef (fileErrors app) (FileError p e :)
 
 -- | Prints errors and if there are any, otherwise executes an action.
-exitIfErrors :: App ()
-exitIfErrors = do
-    app <- get
-    let errors = appErrors app
+exitIfErrors :: AppState -> IO ()
+exitIfErrors app = do
+    errors <- readIORef (fileErrors app)
     unless (null errors) $ do
-        mapM_ (liftIO . print) (reverse errors)
-        liftIO $ exitWith (ExitFailure 1)
+        mapM_ print (reverse errors)
+        exitWith (ExitFailure 1)
 
 -- | Tests whether a file can be operated on.  Adds an error if it
 -- can't be.
-checkFile :: FilePath -> App ()
-checkFile path = do
-    problem <- liftIO $ loop checks
+checkFile :: AppState -> FilePath -> IO ()
+checkFile app path = do
+    problem <- loop checks
     when (isJust problem) $
-        addAppError path (fromJust problem)
+        addFileError app path (fromJust problem)
     
   where
     loop [] = return Nothing
@@ -86,9 +81,9 @@ checkFile path = do
             else return (Just problem)
 
 -- | Checks that all files in the plan can be operated upon.
-validateFiles :: Plan -> App ()
-validateFiles plan =
-    mapM_ checkFile (filesToProcess plan)
+validateFiles :: AppState -> Plan -> IO ()
+validateFiles app plan =
+    mapM_ (checkFile app) (filesToProcess plan)
 
 -- | Transforms a line using fixed strings.
 transformLineFixed
@@ -148,13 +143,13 @@ withTempFile
     -> (FilePath -> Handle -> IO a)  -- ^ The action to run
     -> IO a
 withTempFile dir template f =
-    liftIO $ bracket open closeAndDelete (uncurry f)
+    bracket open closeAndDelete (uncurry f)
   where
-    open = liftIO $ openTempFile dir template
+    open = openTempFile dir template
     closeAndDelete (path, handle) = do
         finally
-            (liftIO $ hClose handle)
-            (liftIO $ removeFile path)
+            (hClose handle)
+            (removeFile path)
 
 -- | Similar to 'withTempFile', but hardcoded to use the system
 -- temporary directory.
@@ -164,12 +159,12 @@ withSystemTempFile template f = do
     withTempFile dir template f
 
 -- | Processes a single file.
-processSingleFile :: Plan -> FilePath -> App PatchData
+processSingleFile :: Plan -> FilePath -> IO PatchData
 processSingleFile plan path = do
-    diffPath <- liftIO $ getDiffPath (patchFilePath plan)
-    oldContent <- liftIO $ L8.readFile path
+    diffPath <- getDiffPath (patchFilePath plan)
+    oldContent <- L8.readFile path
     let newContent = transformFileContent plan oldContent
-    liftIO $ withSystemTempFile "gsub.tmp" $
+    withSystemTempFile "gsub.tmp" $
         \tempPath tempH -> do
             L8.hPut tempH newContent
             hClose tempH
@@ -179,24 +174,20 @@ processSingleFile plan path = do
             return patch
 
 -- | Processes all the files in the plan.
-processFiles :: Plan -> App ()
+processFiles :: Plan -> IO ()
 processFiles plan = do
     makePatches >>= writePatches (patchFilePath plan)
   where
-    makePatches :: App [PatchData]
     makePatches = forM (filesToProcess plan) (processSingleFile plan)
     writePatches patchPath patchParts =
-        liftIO $ writeFile patchPath (concat patchParts)
+        writeFile patchPath (concat patchParts)
 
-appMain :: App ()
-appMain = do
-    opts <- liftIO execParseArgs
-    plan <- liftIO $ makePlan opts
-    validateFiles plan
-    exitIfErrors
+main :: IO ()
+main = do
+    opts <- execParseArgs
+    plan <- makePlan opts
+    app <- AppState <$> newIORef [] <*> newIORef []
+    validateFiles app plan
+    exitIfErrors app
     processFiles plan
-    exitIfErrors
-
-main = evalStateT appMain initAppState
-  where
-    initAppState = AppState [] []
+    exitIfErrors app
