@@ -25,7 +25,7 @@ instance Arbitrary CaseHandling where
 prop_transformLineFixed1 ch pattern replacement before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
-    printTestCase (show rkesult) $
+    printTestCase (show result) $
         replacement `isInfixOf` result &&
         not (pattern `isInfixOf` result)
   where
