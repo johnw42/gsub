@@ -7,7 +7,7 @@ import Plan
 
 import Control.Applicative
 import Control.Exception
-import Control.Monad (foldM, forM, liftM, unless, when)
+import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
 import Data.Either
@@ -158,29 +158,33 @@ withSystemTempFile template f = do
     dir <- getTemporaryDirectory
     withTempFile dir template f
 
+-- | Replace the contents of a file.
+updateFileContent :: FilePath -> FilePath -> FileContent -> IO PatchData
+updateFileContent patchPath path newContent =
+    withSystemTempFile "gsub.tmp" $
+    \tempPath tempH -> do
+        L8.hPut tempH newContent
+        hClose tempH
+        patch <- runDiff path tempPath
+        unless (null patch) $
+            copyFile tempPath path
+        return patch
+
 -- | Processes a single file.
 processSingleFile :: Plan -> FilePath -> IO PatchData
 processSingleFile plan path = do
-    diffPath <- getDiffPath (patchFilePath plan)
     oldContent <- L8.readFile path
     let newContent = transformFileContent plan oldContent
-    withSystemTempFile "gsub.tmp" $
-        \tempPath tempH -> do
-            L8.hPut tempH newContent
-            hClose tempH
-            patch <- runDiff path tempPath
-            unless (null patch) $
-                copyFile tempPath path
-            return patch
+    if newContent == oldContent
+        then return []
+        else updateFileContent patchPath path newContent
+  where
+    patchPath = patchFilePath plan
 
 -- | Processes all the files in the plan.
 processFiles :: Plan -> IO ()
 processFiles plan = do
-    makePatches >>= writePatches (patchFilePath plan)
-  where
-    makePatches = forM (filesToProcess plan) (processSingleFile plan)
-    writePatches patchPath patchParts =
-        writeFile patchPath (concat patchParts)
+    forM_ (filesToProcess plan) (processSingleFile plan)
 
 main :: IO ()
 main = do
