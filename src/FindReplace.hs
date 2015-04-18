@@ -14,7 +14,7 @@ data Replacement = Rep
 makeReplacement :: [ReplacementPart] -> Replacement
 makeReplacement parts = Rep parts maxGroup
   where
-    maxGroup = maximum $ map partGroupNum parts
+    maxGroup = maximum $ 0 : map partGroupNum parts
     partGroupNum (GroupPart n) = n
     partGroupNum _ = 0
 
@@ -59,13 +59,13 @@ mergeLiterals = loop
     loop (part : parts) = part : loop parts
 
 -- Substitute values into a replacement.
-expand :: [String] -> Replacement -> String
-expand groups (Rep parts maxG) =
+expand :: Replacement -> [String] -> String
+expand (Rep parts maxG) groups =
     assert (not $ null $ drop maxG groups) $
-    expand' groups parts
+    expand' parts groups
 
-expand' :: [String] -> [ReplacementPart] -> String
-expand' groups parts = concatMap expandGroup parts
+expand' :: [ReplacementPart] -> [String] -> String
+expand' parts groups = concatMap expandGroup parts
   where
     expandGroup (LiteralPart s) = s
     expandGroup (GroupPart n) = groups !! n

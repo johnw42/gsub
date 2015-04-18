@@ -40,9 +40,9 @@ prop_expand before after =
     testGroups = ["<group" ++ (show n) ++ ">" | n <- [0..]]
     inner n k =
         (label "The empty replacement works.")
-        (once $ expand' testGroups [] ==? "") .&&.
+        (once $ expand' [] testGroups ==? "") .&&.
         (label "Valid groups are replaced.")
-        (expand' testGroups replacement ==? expected)
+        (expand' replacement testGroups ==? expected)
       where
         n' = n + k
         expected = before ++ (testGroups !! n') ++ after
