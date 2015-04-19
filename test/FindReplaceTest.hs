@@ -3,7 +3,6 @@ module FindReplaceTest (tests) where
 import FindReplace
 import TestUtils
 
-import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
 import Data.List
@@ -125,7 +124,7 @@ prop_transformLineRegex (Alpha patStr) (Alpha repStr) before after =
   where
     content = before ++ patStr ++ after
     result = L8.unpack $ transformLineRegex regex rep $ L8.pack content
-    Right regex = Heavy.compileM (B8.pack patStr) []
+    Right regex = compileRegex False patStr
     rep = literalReplacement repStr
 
 tests = testGroup "FindReplace" [

@@ -68,11 +68,8 @@ makePlan' opts path = do
     fixedPattern = patternStringOpt opts
     fixedReplacement = replacementStringOpt opts
     regexReplacementM = parseReplacement $ replacementStringOpt opts
-    pcreOpts = if ignoreCaseOpt opts
-               then [Light.caseless]
-               else []
     pattern = "(" ++ patternStringOpt opts ++ ")"
-    compileRegexM = Heavy.compileM (B8.pack pattern) pcreOpts
+    compileRegexM = compileRegex (ignoreCaseOpt opts) pattern
 
 -- | Converts a ByteString to a string of hexadecimal digits.
 toHexString :: B8.ByteString -> String
