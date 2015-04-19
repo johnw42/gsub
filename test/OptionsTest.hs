@@ -1,7 +1,6 @@
 module OptionsTest where
 
 import Options
-
 import TestUtils
 
 import Control.Applicative
@@ -45,14 +44,6 @@ instance Arbitrary Options where
 
 type FlagPart = String
 type PosArg = String
-
--- Type of strings of letters.
-newtype AlphaString = Alpha { fromAlpha :: String } deriving Show
-type RegexPattern = AlphaString
-type ReplacementPattern = AlphaString
-
-instance Arbitrary AlphaString where
-    arbitrary = Alpha <$> listOf1 (elements ['a'..'z'])
 
 -- | Generator for arbitrary positional arguments.
 arbPosArg :: Gen PosArg

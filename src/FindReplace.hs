@@ -2,8 +2,15 @@ module FindReplace where
 
 import Control.Exception
 import Control.Monad (liftM, liftM2)
-import Data.Char (isDigit)
+import qualified Data.ByteString.Lazy.Char8 as L8
+import Data.Char
+import Data.List
 import Numeric (readDec)
+import qualified Text.Regex.PCRE.Heavy as Heavy
+
+type FileContent = L8.ByteString
+
+data CaseHandling = IgnoreCase | ConsiderCase deriving Show
 
 data ReplacementPart = LiteralPart String | GroupPart Int deriving (Show, Eq)
 data Replacement = Rep
@@ -69,3 +76,28 @@ expand' parts groups = concatMap expandGroup parts
   where
     expandGroup (LiteralPart s) = s
     expandGroup (GroupPart n) = groups !! n
+
+-- | Transforms a line using fixed strings.
+transformLineFixed
+    :: CaseHandling
+    -> String  -- ^ Pattern string.
+    -> String  -- ^ Replacement string.
+    -> String  -- ^ String to replace in.
+    -> String
+transformLineFixed ch needle rep line = loop line
+  where
+    loop "" = ""
+    loop cs@(c:cs')
+        | withCase needle `isPrefixOf` withCase cs =
+              rep ++ loop (drop (length needle) cs)
+        | otherwise = c : loop cs'
+    withCase = case ch of
+        -- Use of uppercase to significant because
+        -- toLower (toUpper '\181') == '\956' !
+        IgnoreCase -> map toUpper
+        ConsiderCase -> id
+
+-- | Transforms a line using regex replacement.
+transformLineRegex :: Heavy.Regex -> Replacement -> FileContent -> FileContent
+transformLineRegex regex rep line =
+    Heavy.gsub regex (expand rep) line

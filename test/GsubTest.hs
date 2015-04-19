@@ -19,53 +19,8 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit
 import Test.QuickCheck
 
-import qualified Text.Regex.PCRE.Heavy as Heavy
-import qualified Text.Regex.PCRE.Light as Light
-
 instance Show Plan where
     show p = "Plan {options = " ++ show (options p) ++ "}"
-
-instance Arbitrary CaseHandling where
-    arbitrary = elements [IgnoreCase, ConsiderCase]
-
-prop_transformLineFixed1 ch pattern replacement before after =
-    not (pattern `isInfixOf` (replacement ++ after)) ==>
-    not (pattern `isInfixOf` (before ++ replacement)) ==>
-    printTestCase (show result) $
-        replacement `isInfixOf` result &&
-        not (pattern `isInfixOf` result)
-  where
-    content = before ++ pattern ++ after
-    result = transformLineFixed ch pattern replacement content
-
-prop_transformLineFixed2 pattern replacement before after =
-    not (u pattern `isInfixOf` (u $ replacement ++ after)) ==>
-    not (u pattern `isInfixOf` (u $ before ++ replacement)) ==>
-    printTestCase (show result) $
-        replacement `isInfixOf` result &&
-        not (pattern `isInfixOf` result)
-  where
-    content = before ++ pattern ++ after
-    u = map toUpper
-    result = transformLineFixed IgnoreCase (u pattern) replacement content
-
-prop_transformLineRegex
-    :: AlphaString
-    -> AlphaString
-    -> String
-    -> String
-    -> Property
-prop_transformLineRegex (Alpha patStr) (Alpha repStr) before after =
-    not (patStr `isInfixOf` (repStr ++ after)) ==>
-    not (patStr `isInfixOf` (before ++ repStr)) ==>
-    printTestCase (show result) $
-    repStr `isInfixOf` result &&
-    not (patStr `isInfixOf` result)
-  where
-    content = before ++ patStr ++ after
-    result = L8.unpack $ transformLineRegex regex rep $ L8.pack content
-    Right regex = Heavy.compileM (B8.pack patStr) []
-    rep = literalReplacement repStr
 
 prop_transformLine plan before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
@@ -93,9 +48,6 @@ prop_transformFileContent plan before after =
         result' = L8.unpack result
 
 tests = testGroup "Gsub" [
-    testProperty "transformLineFixed1" prop_transformLineFixed1,
-    testProperty "transformLineFixed2" prop_transformLineFixed2,
-    testProperty "transformLineRegex" prop_transformLineRegex,
     testProperty "transformLine" prop_transformLine,
     testProperty "transformFileContent" prop_transformFileContent
     ]

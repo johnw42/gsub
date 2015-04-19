@@ -15,8 +15,6 @@ import Text.Printf (printf)
 import qualified Text.Regex.PCRE.Heavy as Heavy
 import qualified Text.Regex.PCRE.Light as Light
 
-data CaseHandling = IgnoreCase | ConsiderCase deriving Show
-
 data Transformation
     = TransformRegex Light.Regex Replacement
     | TransformFixed CaseHandling String String

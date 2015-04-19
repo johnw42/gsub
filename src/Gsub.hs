@@ -20,9 +20,6 @@ import System.Exit
 import System.IO
 import System.Process (readProcess)
 
-import qualified Text.Regex.PCRE.Heavy as Heavy
-
-type FileContent = L8.ByteString
 type PatchData = String
 
 data FileError = FileError FilePath Error
@@ -85,31 +82,6 @@ validateFiles :: AppState -> Plan -> IO ()
 validateFiles app plan =
     mapM_ (checkFile app) (filesToProcess plan)
 
--- | Transforms a line using fixed strings.
-transformLineFixed
-    :: CaseHandling
-    -> String  -- ^ Pattern string.
-    -> String  -- ^ Replacement string.
-    -> String  -- ^ String to replace in.
-    -> String
-transformLineFixed ch needle rep line = loop line
-  where
-    loop "" = ""
-    loop cs@(c:cs')
-        | withCase needle `isPrefixOf` withCase cs =
-              rep ++ loop (drop (length needle) cs)
-        | otherwise = c : loop cs'
-    withCase = case ch of
-        -- Use of uppercase to significant because
-        -- toLower (toUpper '\181') == '\956' !
-        IgnoreCase -> map toUpper
-        ConsiderCase -> id
-
--- | Transforms a line using regex replacement.
-transformLineRegex :: Heavy.Regex -> Replacement -> FileContent -> FileContent
-transformLineRegex regex rep line =
-    Heavy.gsub regex (expand rep) line
-
 -- | Applies the specified transformation to a line of a file.
 transformLine :: Transformation -> FileContent -> FileContent
 transformLine (TransformFixed ch needle rep) =
@@ -121,7 +93,16 @@ transformLine (TransformRegex regex rep) =
 transformFileContent :: Plan -> FileContent -> FileContent
 transformFileContent plan = L8.unlines . map transform . L8.lines
   where
-    transform = transformLine $ transformation plan 
+    transform = transformLine $ transformation plan
+
+-- | Finds the flags that should be passed to @diff@.
+diffFlags :: FilePath -> [String]
+diffFlags path = [
+    "-u",
+    "--label=" ++ path,
+    "--label=" ++ path,
+    "--"
+    ]
     
 -- | Runs the external diff tool over a pair of files.
 runDiff :: FilePath -> FilePath -> IO PatchData
@@ -129,12 +110,15 @@ runDiff oldPath newPath = do
     readProcess "diff" diffArgs diffInput
   where
     diffInput = ""
-    diffArgs = [
-        "-u",
-        "--label=" ++ oldPath,
-        "--label=" ++ oldPath,
-        "--", oldPath, newPath
-        ]
+    diffArgs = diffFlags oldPath ++ [oldPath, newPath]
+
+-- | Show the difference between old content and new.
+showDiff :: FilePath -> FileContent -> IO ()
+showDiff path newContent = do
+    patch <- readProcess "diff" diffArgs (L8.unpack newContent)
+    putStr patch
+  where
+    diffArgs = diffFlags path ++ [path, "-"]
 
 -- | Runs an action with a temporary file, which is deleted afterward.
 withTempFile
@@ -159,25 +143,27 @@ withSystemTempFile template f = do
     withTempFile dir template f
 
 -- | Replace the contents of a file.
-updateFileContent :: FilePath -> FilePath -> FileContent -> IO PatchData
+updateFileContent :: FilePath -> FilePath -> FileContent -> IO ()
 updateFileContent patchPath path newContent =
-    withSystemTempFile "gsub.tmp" $
-    \tempPath tempH -> do
+    withSystemTempFile "gsub.tmp" $ \tempPath tempH -> do
         L8.hPut tempH newContent
         hClose tempH
         patch <- runDiff path tempPath
-        unless (null patch) $
-            copyFile tempPath path
-        return patch
+        appendFile patchPath patch
+        copyFile tempPath path
 
 -- | Processes a single file.
-processSingleFile :: Plan -> FilePath -> IO PatchData
+processSingleFile :: Plan -> FilePath -> IO ()
 processSingleFile plan path = do
     oldContent <- L8.readFile path
     let newContent = transformFileContent plan oldContent
-    if newContent == oldContent
-        then return []
-        else updateFileContent patchPath path newContent
+    unless (newContent == oldContent) $
+        case planMode plan of
+            RunMode -> do
+                putStrLn path
+                updateFileContent patchPath path newContent
+            DryRunMode ->
+                putStrLn path
   where
     patchPath = patchFilePath plan
 

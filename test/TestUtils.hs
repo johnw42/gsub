@@ -1,17 +1,18 @@
 module TestUtils where
 
+import Control.Applicative
 import Test.QuickCheck
+
+-- Type of strings of letters.
+newtype AlphaString = Alpha { fromAlpha :: String } deriving Show
+type RegexPattern = AlphaString
+type ReplacementPattern = AlphaString
+
+instance Arbitrary AlphaString where
+    arbitrary = Alpha <$> listOf1 (elements ['a'..'z'])
 
 -- Equality check for use in tests.
 infix 5 ==?
 (==?) :: (Eq a, Show a) => a -> a -> Property
 a ==? b =
     printTestCase ("expecting " ++ show b ++ ", got " ++ show a) (a == b)
-
--- Apply and check for equality.
-apEq :: (Show a, Show b, Eq b) => (a -> b) -> a -> b -> Property
-apEq f a b =
-    printTestCase
-        ("Expecting " ++ show a ++ " -> " ++ show b ++ ", got -> " ++ show fa)
-        (fa == b)
-    where fa = f a
