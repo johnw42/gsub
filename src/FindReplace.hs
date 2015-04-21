@@ -27,10 +27,7 @@ data ReplacementCase
     | ReplaceOriginal
 
 -- | Data structure representing how to replace a regex match.
-data Replacement = Rep
-    { repParts :: [ReplacementPart]
-    , repMaxGroup :: Int
-    }
+data Replacement = Rep { repParts :: [ReplacementPart] }
 data ReplacementPart
     = LiteralPart String  -- ^ Insert a literal value.
     | GroupPart Int       -- ^ Insert the text of a match group.
@@ -52,16 +49,18 @@ replacementCase (c:_)
     | isUpper c = ReplaceTitle
 replacementCase _ = ReplaceOriginal
 
-makeReplacement :: [ReplacementPart] -> Replacement
-makeReplacement parts = Rep parts maxGroup
+-- The highest group number used in the replacement, or -1 if no
+-- groups are used.
+repMaxGroup :: Replacement -> Int
+repMaxGroup (Rep parts) = foldl' maxGroup (-1) parts
   where
-    maxGroup = maximum $ 0 : map partGroupNum parts
-    partGroupNum (GroupPart n) = n
-    partGroupNum _ = 0
+    maxGroup :: Int -> ReplacementPart -> Int
+    maxGroup acc (GroupPart n) = max acc n
+    maxGroup acc _ = acc
 
 literalReplacement :: String -> Replacement
-literalReplacement "" = makeReplacement []
-literalReplacement s = makeReplacement [LiteralPart s]
+literalReplacement "" = Rep []
+literalReplacement s = Rep [LiteralPart s]
 
 -- Parse a replacement string into a data structure, with the following
 -- escape sequences:
@@ -69,7 +68,7 @@ literalReplacement s = makeReplacement [LiteralPart s]
 --   \& -> The empty string.
 --   \\ -> A literal backslash.
 parseReplacement :: String -> Either String Replacement
-parseReplacement = liftM makeReplacement . parseReplacement'
+parseReplacement = liftM Rep . parseReplacement'
 
 parseReplacement' :: String -> Either String [ReplacementPart]
 parseReplacement' s = loop 0 s
@@ -101,8 +100,7 @@ mergeLiterals = loop
 
 -- Substitute values into a replacement.
 expand :: Replacement -> [String] -> String
-expand (Rep parts maxG) groups =
-    assert (not $ null $ drop maxG groups) $
+expand (Rep parts) groups =
     expand' parts groups
 
 expand' :: [ReplacementPart] -> [String] -> String

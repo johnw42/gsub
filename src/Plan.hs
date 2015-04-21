@@ -58,10 +58,11 @@ makePlan' opts path = do
     checkRegex reM repM = do
         re <- reM
         rep <- repM
-        if Light.captureCount re - 1 >= repMaxGroup rep
+        let maxGroup = repMaxGroup rep
+        if maxGroup < Light.captureCount re
             then Right $ TransformRegex re rep
             else Left ("pattern has fewer than " ++
-                       show (repMaxGroup rep) ++ " groups")
+                       show maxGroup ++ " groups")
     caseHandling = if ignoreCaseOpt opts
                    then IgnoreCase
                    else ConsiderCase
