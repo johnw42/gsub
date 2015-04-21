@@ -174,10 +174,16 @@ processFiles plan = do
 
 main :: IO ()
 main = do
-    opts <- execParseArgs
-    plan <- makePlan opts
-    app <- AppState <$> newIORef [] <*> newIORef []
-    validateFiles app plan
-    exitIfErrors app
-    processFiles plan
-    exitIfErrors app
+    handle printError $ do
+        opts <- execParseArgs
+        plan <- makePlan opts
+        app <- AppState <$> newIORef [] <*> newIORef []
+        validateFiles app plan
+        exitIfErrors app
+        processFiles plan
+        exitIfErrors app
+  where
+    printError (ErrorCall msg) = do
+        name <- getProgName
+        putStrLn (name ++ ": " ++ msg)
+        exitWith (ExitFailure 2)
