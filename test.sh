@@ -38,7 +38,7 @@ EOF
   run 'a' '\1' $tmp_dir/a
   check_stderr <<EOF
 hs-gsub: pattern has fewer than 1 groups
-1
+2
 EOF
 }
 

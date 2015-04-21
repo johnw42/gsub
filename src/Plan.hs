@@ -58,7 +58,7 @@ makePlan' opts path = do
     checkRegex reM repM = do
         re <- reM
         rep <- repM
-        if Light.captureCount re >= repMaxGroup rep
+        if Light.captureCount re - 1 >= repMaxGroup rep
             then Right $ TransformRegex re rep
             else Left ("pattern has fewer than " ++
                        show (repMaxGroup rep) ++ " groups")

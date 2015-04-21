@@ -16,6 +16,7 @@ import Data.List (isPrefixOf)
 import Data.Maybe (catMaybes, fromJust, isJust)
 import Data.Monoid (First(..), mconcat)
 import System.Directory
+import System.Environment
 import System.Exit
 import System.IO
 import System.Process (readProcess)
@@ -183,7 +184,7 @@ main = do
         processFiles plan
         exitIfErrors app
   where
-    printError (ErrorCall msg) = do
+    printError (ErrorCall e) = do
         name <- getProgName
-        putStrLn (name ++ ": " ++ msg)
+        putStrLn (name ++ ": " ++ e)
         exitWith (ExitFailure 2)
