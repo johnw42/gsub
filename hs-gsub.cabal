@@ -88,6 +88,7 @@ test-suite gsub-test
                      , base
                      , bytestring
                      , directory >= 1.2.1.0
+                     , filepath >= 1.3.0.2
                      , hs-gsub
                      , pcre-heavy >= 0.2.2
                      , pcre-light >= 0.4.0.3

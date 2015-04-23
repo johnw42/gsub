@@ -46,8 +46,8 @@ exitIfErrors :: AppState -> IO ()
 exitIfErrors app = do
     errors <- readIORef (fileErrors app)
     unless (null errors) $ do
-        mapM_ print (reverse errors)
-        exitWith (ExitFailure 1)
+        mapM_ (hPrint stderr) (reverse errors)
+        exitWith (ExitFailure 2)
 
 -- | Tests whether a file can be operated on.  Adds an error if it
 -- can't be.
@@ -186,5 +186,5 @@ main = do
   where
     printError (ErrorCall e) = do
         name <- getProgName
-        putStrLn (name ++ ": " ++ e)
-        exitWith (ExitFailure 2)
+        hPutStrLn stderr (name ++ ": " ++ msg)
+        exitWith (ExitFailure 1)
