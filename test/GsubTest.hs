@@ -12,11 +12,13 @@ import Control.Monad
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char (toLower, toUpper)
+import Data.IORef
 import Data.List (isInfixOf)
 import Data.Maybe (isNothing)
 import System.Directory
-import System.FilePath
 import System.Exit
+import System.FilePath
+import System.IO.Unsafe
 import System.Process
 import Test.Framework (testGroup)
 import Test.Framework.Providers.HUnit (testCase)
@@ -54,51 +56,66 @@ prop_transformFileContent plan before after =
 
 testDataDir = "dist/test_tmp"
 testBin = "dist/build/hs-gsub/hs-gsub"
+built = unsafePerformIO (newIORef False)
+
+testFile = (testDataDir </>)
+
+writeTestFile path = writeFile (testFile path)
+
+assertTestFile path content = do
+    content' <- readFile (testFile path)
+    assertEqual ("wrong content for " ++ path) content content'
+
+run args = do
+    readProcessWithExitCode testBin args ""
 
 prepareTestFiles = do
-    callCommand "cabal build"
-    callProcess "rsync" ["-a", "--delete", "test_data/", testDataDir]
+    built' <- readIORef built
+    unless built' $ do
+        callCommand "cabal build"
+        writeIORef built True
+    callCommand "rm -rf test_data"
+    callCommand "mkdir test_data"
+
+expectStdout :: [String] -> ExitCode -> String -> IO ()
+expectStdout args exitCode stdout = do
+    prepareTestFiles
+    (exitCode', stdout', stderr') <- run args
+    assertEqual "wrong exit code" exitCode exitCode'
+    assertEqual "wrong stdout" stdout stdout'
+    assertEqual "output on stderr" "" stderr'
+
+expectStderr :: [String] -> ExitCode -> String -> IO ()
+expectStderr args exitCode stderr = do
+    prepareTestFiles
+    (exitCode', stdout', stderr') <- run args
+    assertEqual "wrong exit code" exitCode exitCode'
+    assertEqual "wrong stderr" stderr stderr'
+    assertEqual "output on stdout" "" stdout'
 
 case_noArgs = do
     prepareTestFiles
-    (exitCode, stdout, stderr) <-
-        readProcessWithExitCode testBin [] ""
+    (exitCode, stdout, stderr) <- run []
     assertEqual "bad exit code" (ExitFailure 1) exitCode
     assertEqual "wrong stdout" "" stdout
     assertBool "empty stderr" ("" /= stderr)
 
 case_badFileArgs = do
-    prepareTestFiles
-    (exitCode, stdout, stderr) <-
-        readProcessWithExitCode
-        testBin
-        ["a", "b", testDataDir, testDataDir </> "no_such_file"]
-        ""
-    assertEqual "bad exit code" (ExitFailure 2) exitCode
-    -- TODO: Output should be on stderr.
-    assertEqual "wrong stdout" "" stdout
-    assertEqual "wrong stderr" expectedOutput stderr
-  where
-    expectedOutput = unlines [
-        testDataDir ++ ": is a directory",
-        testDataDir ++ "/no_such_file: no such file"
-        ]
+    expectStderr
+        ["a", "b", file1, file2]
+        (ExitFailure 2)
+        (unlines [
+                 file1 ++ ": is a directory",
+                 file2 ++ ": no such file"
+                 ])
+  where file1 = testDataDir
+        file2 = testFile "no_such_file"
 
 case_badBackref = do
-    prepareTestFiles
-    (exitCode, stdout, stderr) <-
-        readProcessWithExitCode
-        testBin
-        ["a", "\\1", testDataDir </> "a"]
-        ""
-    assertEqual "bad exit code" (ExitFailure 1) exitCode
-    -- TODO: Output should be on stderr.
-    assertEqual "wrong stdout" "" stdout
-    assertEqual "wrong stderr" expectedOutput stderr
-  where
-    expectedOutput = unlines [
-        "hs-gsub: pattern has fewer than 1 groups"
-        ]
+    expectStderr
+        ["a", "\\1", testFile "a"]
+        (ExitFailure 1)
+        "hs-gsub: pattern has fewer than 1 groups\n"
 
 tests = do
     testGroup "Gsub" [

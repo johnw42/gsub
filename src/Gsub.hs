@@ -184,7 +184,7 @@ main = do
         processFiles plan
         exitIfErrors app
   where
-    printError (ErrorCall e) = do
+    printError (ErrorCall msg) = do
         name <- getProgName
         hPutStrLn stderr (name ++ ": " ++ msg)
         exitWith (ExitFailure 1)
