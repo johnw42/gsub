@@ -129,6 +129,13 @@ case_regexReplace = do
         [testFile "a"]
     assertTestFile "a" "fx\n"
 
+case_groupReplace = do
+    writeTestFile "a" "ax by cz\n"
+    expectStdout
+        ["([a-c])([x-z])", "\\0:\\2\\1", testFile "a"]
+        [testFile "a"]
+    assertTestFile "a" "ax:xa by:yb cz:zc\n"
+
 tests = do
     testGroup "Gsub"
         [testProperty "transformLine" prop_transformLine
@@ -138,4 +145,5 @@ tests = do
         ,testCase "case_badBackref" case_badBackref
         ,testCase "case_simpleReplace" case_simpleReplace
         ,testCase "case_regexReplace" case_regexReplace
+        ,testCase "case_groupReplace" case_groupReplace
         ]
