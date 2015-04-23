@@ -69,7 +69,7 @@ assertTestFile path content = do
 run args = do
     readProcessWithExitCode testBin args ""
 
-prepareTestFiles = do
+setUp = do
     built' <- readIORef built
     unless built' $ do
         callCommand "cabal build"
@@ -77,24 +77,24 @@ prepareTestFiles = do
     callCommand "rm -rf test_data"
     callCommand "mkdir test_data"
 
-expectStdout :: [String] -> ExitCode -> String -> IO ()
-expectStdout args exitCode stdout = do
-    prepareTestFiles
+expectStdout :: [String] -> String -> IO ()
+expectStdout args stdout = do
+    setUp
     (exitCode', stdout', stderr') <- run args
-    assertEqual "wrong exit code" exitCode exitCode'
+    assertEqual "wrong exit code" ExitSuccess exitCode'
     assertEqual "wrong stdout" stdout stdout'
     assertEqual "output on stderr" "" stderr'
 
-expectStderr :: [String] -> ExitCode -> String -> IO ()
+expectStderr :: [String] -> Int -> String -> IO ()
 expectStderr args exitCode stderr = do
-    prepareTestFiles
+    setUp
     (exitCode', stdout', stderr') <- run args
-    assertEqual "wrong exit code" exitCode exitCode'
+    assertEqual "wrong exit code" (ExitFailure exitCode) exitCode'
     assertEqual "wrong stderr" stderr stderr'
     assertEqual "output on stdout" "" stdout'
 
 case_noArgs = do
-    prepareTestFiles
+    setUp
     (exitCode, stdout, stderr) <- run []
     assertEqual "bad exit code" (ExitFailure 1) exitCode
     assertEqual "wrong stdout" "" stdout
@@ -103,7 +103,7 @@ case_noArgs = do
 case_badFileArgs = do
     expectStderr
         ["a", "b", file1, file2]
-        (ExitFailure 2)
+        2
         (unlines [
                  file1 ++ ": is a directory",
                  file2 ++ ": no such file"
@@ -114,8 +114,16 @@ case_badFileArgs = do
 case_badBackref = do
     expectStderr
         ["a", "\\1", testFile "a"]
-        (ExitFailure 1)
+        1
         "hs-gsub: pattern has fewer than 1 groups\n"
+
+case_simpleReplace = do
+    writeTestFile "a" "foo\n"
+    expectStderr
+        ["foo", "bar", testFile "a"]
+        1
+        "hs-gsub: pattern has fewer than 1 groups\n"
+    assertTestFile "a" "bar\n"
 
 tests = do
     testGroup "Gsub" [
@@ -123,5 +131,6 @@ tests = do
         testProperty "transformFileContent" prop_transformFileContent,
         testCase "case_noArgs" case_noArgs,
         testCase "case_badFileArgs" case_badFileArgs,
-        testCase "case_badBackref" case_badBackref
+        testCase "case_badBackref" case_badBackref,
+        testCase "case_simpleReplace" case_simpleReplace
         ]
