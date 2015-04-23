@@ -19,7 +19,7 @@ import System.Directory
 import System.Environment
 import System.Exit
 import System.IO
-import System.Process (readProcess)
+import System.Process
 
 type PatchData = String
 
@@ -108,7 +108,10 @@ diffFlags path = [
 -- | Runs the external diff tool over a pair of files.
 runDiff :: FilePath -> FilePath -> IO PatchData
 runDiff oldPath newPath = do
-    readProcess "diff" diffArgs diffInput
+    (_, diffStdout, diffStderr) <-
+        readProcessWithExitCode "diff" diffArgs diffInput
+    hPutStr stderr diffStderr
+    return diffStdout
   where
     diffInput = ""
     diffArgs = diffFlags oldPath ++ [oldPath, newPath]
