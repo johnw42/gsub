@@ -79,7 +79,6 @@ setUp = do
 
 expectStdout :: [String] -> [String] -> IO ()
 expectStdout args stdoutLines = do
-    setUp
     (exitCode', stdout', stderr') <- run args
     assertEqual "wrong exit code" ExitSuccess exitCode'
     assertEqual "wrong stdout" (unlines stdoutLines) stdout'
@@ -87,7 +86,6 @@ expectStdout args stdoutLines = do
 
 expectStderr :: [String] -> Int -> [String] -> IO ()
 expectStderr args exitCode stderrLines = do
-    setUp
     (exitCode', stdout', stderr') <- run args
     assertEqual "wrong exit code" (ExitFailure exitCode) exitCode'
     assertEqual "wrong stderr" (unlines stderrLines) stderr'
@@ -101,6 +99,7 @@ case_noArgs = do
     assertBool "empty stderr" ("" /= stderr)
 
 case_badFileArgs = do
+    setUp
     expectStderr
         ["a", "b", file1, file2]
         2
@@ -110,12 +109,14 @@ case_badFileArgs = do
         file2 = testFile "no_such_file"
 
 case_badBackref = do
+    setUp
     expectStderr
         ["a", "\\1", testFile "a"]
         1
         ["hs-gsub: pattern has fewer than 1 groups"]
 
 case_simpleReplace = do
+    setUp
     writeTestFile "a" "foo\n"
     expectStdout
         ["foo", "bar", testFile "a"]
@@ -123,6 +124,7 @@ case_simpleReplace = do
     assertTestFile "a" "bar\n"
 
 case_regexReplace = do
+    setUp
     writeTestFile "a" "foo\n"
     expectStdout
         ["o+", "x", testFile "a"]
@@ -130,6 +132,7 @@ case_regexReplace = do
     assertTestFile "a" "fx\n"
 
 case_groupReplace = do
+    setUp
     writeTestFile "a" "ax by cz\n"
     expectStdout
         ["([a-c])([x-z])", "\\0:\\2\\1", testFile "a"]
@@ -138,12 +141,12 @@ case_groupReplace = do
 
 tests = do
     testGroup "Gsub"
-        [testProperty "transformLine" prop_transformLine
-        ,testProperty "transformFileContent" prop_transformFileContent
-        ,testCase "case_noArgs" case_noArgs
-        ,testCase "case_badFileArgs" case_badFileArgs
-        ,testCase "case_badBackref" case_badBackref
-        ,testCase "case_simpleReplace" case_simpleReplace
-        ,testCase "case_regexReplace" case_regexReplace
-        ,testCase "case_groupReplace" case_groupReplace
+        [ testProperty "transformLine" prop_transformLine
+        , testProperty "transformFileContent" prop_transformFileContent
+        , testCase "case_noArgs" case_noArgs
+        , testCase "case_badFileArgs" case_badFileArgs
+        , testCase "case_badBackref" case_badBackref
+        , testCase "case_simpleReplace" case_simpleReplace
+        , testCase "case_regexReplace" case_regexReplace
+        , testCase "case_groupReplace" case_groupReplace
         ]
