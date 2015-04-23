@@ -122,12 +122,20 @@ case_simpleReplace = do
         [testFile "a"]
     assertTestFile "a" "bar\n"
 
+case_regexReplace = do
+    writeTestFile "a" "foo\n"
+    expectStdout
+        ["o+", "x", testFile "a"]
+        [testFile "a"]
+    assertTestFile "a" "fx\n"
+
 tests = do
-    testGroup "Gsub" [
-        testProperty "transformLine" prop_transformLine,
-        testProperty "transformFileContent" prop_transformFileContent,
-        testCase "case_noArgs" case_noArgs,
-        testCase "case_badFileArgs" case_badFileArgs,
-        testCase "case_badBackref" case_badBackref,
-        testCase "case_simpleReplace" case_simpleReplace
+    testGroup "Gsub"
+        [testProperty "transformLine" prop_transformLine
+        ,testProperty "transformFileContent" prop_transformFileContent
+        ,testCase "case_noArgs" case_noArgs
+        ,testCase "case_badFileArgs" case_badFileArgs
+        ,testCase "case_badBackref" case_badBackref
+        ,testCase "case_simpleReplace" case_simpleReplace
+        ,testCase "case_regexReplace" case_regexReplace
         ]
