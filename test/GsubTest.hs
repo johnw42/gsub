@@ -80,16 +80,16 @@ setUp = do
 expectStdout :: [String] -> [String] -> IO ()
 expectStdout args stdoutLines = do
     (exitCode', stdout', stderr') <- run args
-    assertEqual "wrong exit code" ExitSuccess exitCode'
-    assertEqual "wrong stdout" (unlines stdoutLines) stdout'
     assertEqual "output on stderr" "" stderr'
+    assertEqual "wrong stdout" stdoutLines (lines stdout')
+    assertEqual "wrong exit code" ExitSuccess exitCode'
 
 expectStderr :: [String] -> Int -> [String] -> IO ()
 expectStderr args exitCode stderrLines = do
     (exitCode', stdout', stderr') <- run args
-    assertEqual "wrong exit code" (ExitFailure exitCode) exitCode'
-    assertEqual "wrong stderr" (unlines stderrLines) stderr'
+    assertEqual "wrong stderr" stderrLines (lines stderr')
     assertEqual "output on stdout" "" stdout'
+    assertEqual "wrong exit code" (ExitFailure exitCode) exitCode'
 
 case_noArgs = do
     setUp
@@ -103,8 +103,9 @@ case_badFileArgs = do
     expectStderr
         ["a", "b", file1, file2]
         2
-        [file1 ++ ": is a directory",
-         file2 ++ ": no such file"]
+        [ file1 ++ ": is a directory"
+        , file2 ++ ": no such file"
+        ]
   where file1 = testDataDir
         file2 = testFile "no_such_file"
 
@@ -139,6 +140,20 @@ case_groupReplace = do
         [testFile "a"]
     assertTestFile "a" "ax:xa by:yb cz:zc\n"
 
+case_simpleDiff = do
+    setUp
+    writeTestFile "a" "a\nb\nc\n"
+    expectStdout
+        ["--diff", "b", "y", testFile "a"]
+        [ "--- dist/test_tmp/a"
+        , "+++ dist/test_tmp/a"
+        , "@@ -1,3 +1,3 @@"
+        , " a"
+        , "-b"
+        , "+y"
+        , " c"]
+    assertTestFile "a" "a\nb\nc\n"
+
 tests =
     testGroup "Gsub"
     [ testProperty "transformLine" prop_transformLine
@@ -149,4 +164,5 @@ tests =
     , testCase "case_simpleReplace" case_simpleReplace
     , testCase "case_regexReplace" case_regexReplace
     , testCase "case_groupReplace" case_groupReplace
+    , testCase "case_simpleDiff" case_simpleDiff
     ]

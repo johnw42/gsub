@@ -120,8 +120,10 @@ runDiff oldPath newPath = do
 -- | Show the difference between old content and new.
 showDiff :: FilePath -> FileContent -> IO ()
 showDiff path newContent = do
-    patch <- readProcess "diff" diffArgs (L8.unpack newContent)
-    putStr patch
+    (_, diffStdout, diffStderr) <-
+        readProcessWithExitCode "diff" diffArgs (L8.unpack newContent)
+    hPutStr stderr diffStderr
+    putStr diffStdout
   where
     diffArgs = diffFlags path ++ [path, "-"]
 
@@ -169,6 +171,8 @@ processSingleFile plan path = do
                 updateFileContent patchPath path newContent
             DryRunMode ->
                 putStrLn path
+            DiffMode ->
+                showDiff path newContent
   where
     patchPath = patchFilePath plan
 
