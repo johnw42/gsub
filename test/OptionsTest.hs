@@ -184,6 +184,6 @@ tests =
     , testProperty "parseArgs_withFlags" prop_parseArgs_withFlags
     , testProperty "parseArgs_withDiff" prop_parseArgs_withDiff
     , testProperty "parseArgs_withDryRun" prop_parseArgs_withDryRun
-    , testProperty "parseArgs_withUndo" prop_parseArgs_withUnd
+    , testProperty "parseArgs_withUndo" prop_parseArgs_withUndo
     , testProperty "parseArgs_withDefaultMode" prop_parseArgs_withDefaultMode
     ]

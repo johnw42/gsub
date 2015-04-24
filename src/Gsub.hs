@@ -100,7 +100,7 @@ transformFileContent plan = L8.unlines . map transform . L8.lines
 -- | Finds the flags that should be passed to @diff@.
 diffFlags :: FilePath -> [String]
 diffFlags path =
-    [ "-u",
+    [ "-u"
     , "--label=" ++ path
     , "--label=" ++ path
     , "--"
