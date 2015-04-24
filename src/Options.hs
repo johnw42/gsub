@@ -90,7 +90,7 @@ execParseArgs = execParser (info (helper <*> parser) idm)
 parseArgs :: String -> [String] -> Either String Options
 parseArgs progName args =
     maybe (Left "parse faied") Right $
-        getParseResult $ execParserPure (prefs idm) (info parser idm) args
+        getParseResult (execParserPure (prefs idm) (info parser idm) args)
 
 defaultOpts p r fs =
     let (Right opts) = parseArgs "gsub" (p:r:fs) in opts

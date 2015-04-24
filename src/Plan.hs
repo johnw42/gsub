@@ -52,7 +52,7 @@ makePlan' opts path = do
     xfrm <- if fixedStringsOpt opts
             then Right fixed
             else checkRegex compileRegexM regexReplacementM
-    return $ Plan opts xfrm patchFilePath
+    return (Plan opts xfrm patchFilePath)
   where
     patchFilePath = maybe path id (patchFilePathOpt opts)
     fixed = TransformFixed caseHandling fixedPattern fixedReplacement
@@ -61,7 +61,7 @@ makePlan' opts path = do
         rep <- repM
         let maxGroup = repMaxGroup rep
         if maxGroup < Light.captureCount re
-            then Right $ TransformRegex re rep
+            then Right (TransformRegex re rep)
             else Left ("pattern has fewer than " ++
                        show maxGroup ++ " groups")
     caseHandling = if ignoreCaseOpt opts
@@ -69,7 +69,7 @@ makePlan' opts path = do
                    else ConsiderCase
     fixedPattern = patternStringOpt opts
     fixedReplacement = replacementStringOpt opts
-    regexReplacementM = parseReplacement $ replacementStringOpt opts
+    regexReplacementM = parseReplacement (replacementStringOpt opts)
     pattern = "(" ++ patternStringOpt opts ++ ")"
     compileRegexM = compileRegex (ignoreCaseOpt opts) pattern
 

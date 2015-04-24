@@ -95,7 +95,7 @@ transformLine (TransformRegex regex rep) =
 transformFileContent :: Plan -> FileContent -> FileContent
 transformFileContent plan = L8.unlines . map transform . L8.lines
   where
-    transform = transformLine $ transformation plan
+    transform = transformLine (transformation plan)
 
 -- | Finds the flags that should be passed to @diff@.
 diffFlags :: FilePath -> [String]

@@ -18,8 +18,8 @@ instance Arbitrary Plan where
         Right plan <- return (makePlan' opts path) `suchThat` isRight
         return plan
     shrink plan = do
-        opts <- shrink $ options plan
-        path <- shrink $ patchFilePath plan
+        opts <- shrink (options plan)
+        path <- shrink (patchFilePath plan)
         Right plan <- return (makePlan' opts path)
         return plan
 

@@ -27,12 +27,12 @@ instance Arbitrary Options where
         <*> arbitrary
         <*> arbitrary
     shrink opts = do
-        files <- shrink $ filesOpt opts
-        bs <- shrink $ backupSuffixOpt opts
-        undoDir <- shrink $ undoDirOpt opts
-        pfp <- shrink $ patchFilePathOpt opts
-        ps <- shrink $ patternStringOpt opts
-        rs <- shrink $ replacementStringOpt opts
+        files <- shrink (filesOpt opts)
+        bs <- shrink (backupSuffixOpt opts)
+        undoDir <- shrink (undoDirOpt opts)
+        pfp <- shrink (patchFilePathOpt opts)
+        ps <- shrink (patternStringOpt opts)
+        rs <- shrink (replacementStringOpt opts)
         return $ opts
             { filesOpt = files
             , patternStringOpt = ps
@@ -84,7 +84,7 @@ prop_arbFlag_dash =
 
 -- Arbitrary list of flags to apply at one time.
 arbFlagList :: Gen [[FlagPart]]
-arbFlagList = resize 3 $ listOf arbFlag
+arbFlagList = resize 3 (listOf arbFlag)
 
 -- Randomly insert flags into a list of positional arguments.
 withFlags :: [PosArg] -> [[FlagPart]] -> Gen [String]
@@ -96,7 +96,7 @@ withFlags posArgs flags = concat `liftM` foldM insertFlag initSegments flags
         insertFlag segments flag = do
             i <- choose (0, length segments)
             let (before, after) = splitAt i segments
-            return $ before ++ [flag] ++ after
+            return (before ++ [flag] ++ after)
 
 
 -- Arbitrary complete argument list.
@@ -117,11 +117,11 @@ arbFullArgList' = do
     posArgs <- arbPosArgList
     flags <- arbFlagList
     args <- posArgs `withFlags` flags
-    return $ FullArgList posArgs flags args
+    return (FullArgList posArgs flags args)
     
 -- Test with too few arguments.
 prop_parseArgs_notEnough name =
-  forAll (resize 2 $ listOf arbPosArg) $ \posArgs ->
+  forAll (resize 2 (listOf arbPosArg)) $ \posArgs ->
   forAll arbFlagList $ \flags ->
   forAll (posArgs `withFlags` flags) $ \args ->
   conjoin

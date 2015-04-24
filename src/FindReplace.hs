@@ -84,9 +84,9 @@ parseReplacement' s = loop 0 s
             in cons (GroupPart n) (loop offset' cs')
         _ -> Left ("invalid escape sequence at offset " ++ show offset)
     loop offset (c:cs) = consLiteral [c] (loop (offset+1) cs)
-    cons part parts = liftM2 (:) (Right $ part) parts
+    cons part parts = liftM2 (:) (Right part) parts
     consLiteral s parts =
-        liftM mergeLiterals $ cons (LiteralPart s) parts
+        liftM mergeLiterals (cons (LiteralPart s) parts)
     
 -- Normalize a replacement sequence by combining adjacent LiteralParts.
 mergeLiterals :: [ReplacementPart] -> [ReplacementPart]

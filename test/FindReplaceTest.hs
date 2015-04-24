@@ -29,7 +29,7 @@ prop_mergeLiterals1 pa pb =
         merged = mergeLiterals parts
 
 prop_mergeLiterals2 parts =
-    all check (tails $ mergeLiterals parts)
+    all check (tails (mergeLiterals parts))
     where
         check [] = True
         check [LiteralPart ""] = False
