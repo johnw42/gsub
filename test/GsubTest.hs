@@ -2,19 +2,13 @@ module GsubTest where
 
 import Gsub
 
-import FindReplace
-import Options
-import OptionsTest
 import Plan
 import PlanTest
 
 import Control.Monad
-import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
-import Data.Char (toLower, toUpper)
 import Data.IORef
 import Data.List (isInfixOf)
-import Data.Maybe (isNothing)
 import System.Directory
 import System.Exit
 import System.FilePath
