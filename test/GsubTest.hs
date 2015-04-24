@@ -154,6 +154,14 @@ case_simpleDiff = do
         , " c"]
     assertTestFile "a" "a\nb\nc\n"
 
+case_simpleDryRun = do
+    setUp
+    writeTestFile "a" "foo\n"
+    expectStdout
+        ["--no-modify", "foo", "bar", testFile "a"]
+        [testFile "a"]
+    assertTestFile "a" "foo\n"
+
 tests =
     testGroup "Gsub"
     [ testProperty "transformLine" prop_transformLine
@@ -165,4 +173,5 @@ tests =
     , testCase "case_regexReplace" case_regexReplace
     , testCase "case_groupReplace" case_groupReplace
     , testCase "case_simpleDiff" case_simpleDiff
+    , testCase "case_simpleDryRun" case_simpleDryRun
     ]
