@@ -15,18 +15,19 @@ data PlanMode
     deriving (Eq, Show)
 
 -- Command-line options.
-data Options = Options {
-    patternStringOpt :: String,
-    replacementStringOpt :: String,
-    filesOpt :: [FilePath],
-    planModeOpt :: PlanMode,
-    backupSuffixOpt :: Maybe String,
-    fixedStringsOpt :: Bool,
-    patchFilePathOpt :: Maybe FilePath,
-    keepGoingOpt :: Bool,
-    ignoreCaseOpt :: Bool,
-    undoDirOpt :: Maybe FilePath
-    } deriving (Eq, Show)
+data Options
+    = Options
+      { patternStringOpt :: String
+      , replacementStringOpt :: String
+      , filesOpt :: [FilePath]
+      , planModeOpt :: PlanMode
+      , backupSuffixOpt :: Maybe String
+      , fixedStringsOpt :: Bool
+      , patchFilePathOpt :: Maybe FilePath
+      , keepGoingOpt :: Bool
+      , ignoreCaseOpt :: Bool
+      , undoDirOpt :: Maybe FilePath
+      } deriving (Eq, Show)
 
 parser :: Parser Options
 parser =

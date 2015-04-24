@@ -11,5 +11,5 @@ main = defaultMain
        [ FindReplaceTest.tests
        , OptionsTest.tests
        , PlanTest.tests
-       ,  GsubTest.tests
+       , GsubTest.tests
        ]

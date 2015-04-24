@@ -20,11 +20,12 @@ data Transformation
     | TransformFixed CaseHandling String String
 
 -- An execution plan.
-data Plan = Plan
-    { options :: Options
-    , transformation :: Transformation
-    , patchFilePath :: FilePath
-    }
+data Plan
+    = Plan
+      { options :: Options
+      , transformation :: Transformation
+      , patchFilePath :: FilePath
+      }
 
 -- A facade for options.
 patternString = patternStringOpt . options

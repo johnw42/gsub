@@ -28,10 +28,11 @@ data FileError = FileError FilePath Error
 instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
 
-data AppState = AppState {
-    fileErrors :: IORef [FileError],
-    touchedFiles :: IORef [FilePath]
-    }
+data AppState
+    = AppState
+      { fileErrors :: IORef [FileError]
+      , touchedFiles :: IORef [FilePath]
+      }
 
 addTouchedFile :: AppState -> FilePath -> IO ()
 addTouchedFile app path =
@@ -65,11 +66,11 @@ checkFile app path = do
             Nothing -> loop cs
             _ -> return problem
 
-    checks = [
-        check "is a directory" $ fmap not . doesDirectoryExist,
-        check "no such file" $ doesFileExist,
-        check "not readable" $ fmap readable . getPermissions,
-        check "not writable" $ fmap writable . getPermissions
+    checks =
+        [ check "is a directory" $ fmap not . doesDirectoryExist
+        , check "no such file" $ doesFileExist
+        , check "not readable" $ fmap readable . getPermissions
+        , check "not writable" $ fmap writable . getPermissions
         ]
 
     check problem test path = do
@@ -98,11 +99,11 @@ transformFileContent plan = L8.unlines . map transform . L8.lines
 
 -- | Finds the flags that should be passed to @diff@.
 diffFlags :: FilePath -> [String]
-diffFlags path = [
-    "-u",
-    "--label=" ++ path,
-    "--label=" ++ path,
-    "--"
+diffFlags path =
+    [ "-u",
+    , "--label=" ++ path
+    , "--label=" ++ path
+    , "--"
     ]
     
 -- | Runs the external diff tool over a pair of files.

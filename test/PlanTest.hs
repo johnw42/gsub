@@ -26,7 +26,8 @@ instance Arbitrary Plan where
 prop_toHexString1 s = length (toHexString (B.pack s)) == 2 * length s
 prop_toHexString2 s = all isHexDigit (toHexString (B.pack s))
 
-tests = testGroup "Plan" [
-  testProperty "toHexString1" prop_toHexString1,
-  testProperty "toHexString2" prop_toHexString2
-  ]
+tests =
+    testGroup "Plan"
+    [ testProperty "toHexString1" prop_toHexString1
+    , testProperty "toHexString2" prop_toHexString2
+    ]

@@ -33,13 +33,13 @@ instance Arbitrary Options where
         pfp <- shrink $ patchFilePathOpt opts
         ps <- shrink $ patternStringOpt opts
         rs <- shrink $ replacementStringOpt opts
-        return $ opts {
-            filesOpt = files,
-            patternStringOpt = ps,
-            replacementStringOpt = rs,
-            backupSuffixOpt = bs,
-            undoDirOpt = undoDir,
-            patchFilePathOpt = pfp
+        return $ opts
+            { filesOpt = files
+            , patternStringOpt = ps
+            , replacementStringOpt = rs
+            , backupSuffixOpt = bs
+            , undoDirOpt = undoDir
+            , patchFilePathOpt = pfp
             }
 
 type FlagPart = String
@@ -175,14 +175,15 @@ prop_parseArgs_withDefaultMode name =
         Left _ -> discard
         Right opts -> planModeOpt opts == RunMode
 
-tests = testGroup "Options" [
-  testProperty "arbFlag_length" prop_arbFlag_length,
-  testProperty "arbFlag_dash" prop_arbFlag_dash,
-  testProperty "parseArgs_notEnough" prop_parseArgs_notEnough,
-  testProperty "parseArgs_noFlags" prop_parseArgs_noFlags,
-  testProperty "parseArgs_withFlags" prop_parseArgs_withFlags,
-  testProperty "parseArgs_withDiff" prop_parseArgs_withDiff,
-  testProperty "parseArgs_withDryRun" prop_parseArgs_withDryRun,
-  testProperty "parseArgs_withUndo" prop_parseArgs_withUndo,
-  testProperty "parseArgs_withDefaultMode" prop_parseArgs_withDefaultMode
-  ]
+tests =
+    testGroup "Options"
+    [ testProperty "arbFlag_length" prop_arbFlag_length
+    , testProperty "arbFlag_dash" prop_arbFlag_dash
+    , testProperty "parseArgs_notEnough" prop_parseArgs_notEnough
+    , testProperty "parseArgs_noFlags" prop_parseArgs_noFlags
+    , testProperty "parseArgs_withFlags" prop_parseArgs_withFlags
+    , testProperty "parseArgs_withDiff" prop_parseArgs_withDiff
+    , testProperty "parseArgs_withDryRun" prop_parseArgs_withDryRun
+    , testProperty "parseArgs_withUndo" prop_parseArgs_withUnd
+    , testProperty "parseArgs_withDefaultMode" prop_parseArgs_withDefaultMode
+    ]

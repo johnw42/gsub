@@ -139,14 +139,14 @@ case_groupReplace = do
         [testFile "a"]
     assertTestFile "a" "ax:xa by:yb cz:zc\n"
 
-tests = do
+tests =
     testGroup "Gsub"
-        [ testProperty "transformLine" prop_transformLine
-        , testProperty "transformFileContent" prop_transformFileContent
-        , testCase "case_noArgs" case_noArgs
-        , testCase "case_badFileArgs" case_badFileArgs
-        , testCase "case_badBackref" case_badBackref
-        , testCase "case_simpleReplace" case_simpleReplace
-        , testCase "case_regexReplace" case_regexReplace
-        , testCase "case_groupReplace" case_groupReplace
-        ]
+    [ testProperty "transformLine" prop_transformLine
+    , testProperty "transformFileContent" prop_transformFileContent
+    , testCase "case_noArgs" case_noArgs
+    , testCase "case_badFileArgs" case_badFileArgs
+    , testCase "case_badBackref" case_badBackref
+    , testCase "case_simpleReplace" case_simpleReplace
+    , testCase "case_regexReplace" case_regexReplace
+    , testCase "case_groupReplace" case_groupReplace
+    ]

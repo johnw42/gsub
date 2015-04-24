@@ -127,13 +127,14 @@ prop_transformLineRegex (Alpha patStr) (Alpha repStr) before after =
     Right regex = compileRegex False patStr
     rep = literalReplacement repStr
 
-tests = testGroup "FindReplace" [
-    testProperty "mergeLiterals1" prop_mergeLiterals1,
-    testProperty "mergeLiterals2" prop_mergeLiterals2,
-    testProperty "expand" prop_expand,
-    testProperty "parseReplacement" prop_parseReplacement,
-    testCase "parseReplacement0" case_parseReplacement0,
-    testProperty "transformLineFixed1" prop_transformLineFixed1,
-    testProperty "transformLineFixed2" prop_transformLineFixed2,
-    testProperty "transformLineRegex" prop_transformLineRegex
+tests =
+    testGroup "FindReplace"
+    [ testProperty "mergeLiterals1" prop_mergeLiterals1
+    , testProperty "mergeLiterals2" prop_mergeLiterals2
+    , testProperty "expand" prop_expand
+    , testProperty "parseReplacement" prop_parseReplacement
+    , testCase "parseReplacement0" case_parseReplacement0
+    , testProperty "transformLineFixed1" prop_transformLineFixed1
+    , testProperty "transformLineFixed2" prop_transformLineFixed2
+    , testProperty "transformLineRegex" prop_transformLineRegex
     ]
