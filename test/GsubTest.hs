@@ -18,6 +18,7 @@ import Data.Maybe (isNothing)
 import System.Directory
 import System.Exit
 import System.FilePath
+import System.IO
 import System.IO.Unsafe
 import System.Process
 import Test.Framework (testGroup)
@@ -162,6 +163,16 @@ case_simpleDryRun = do
         [testFile "a"]
     assertTestFile "a" "foo\n"
 
+case_simpleUndo = do
+    setUp
+    writeTestFile "z" "foo\n"
+    expectStdout args [testFile "z"]
+    assertTestFile "z" "bar\n"
+    expectStdout ("--undo" : args) ["patching file " ++ testFile "z"]
+    assertTestFile "z" "foo\n"
+  where
+    args = ["foo", "bar", testFile "z"]
+
 tests =
     testGroup "Gsub"
     [ testProperty "transformLine" prop_transformLine
@@ -174,4 +185,5 @@ tests =
     , testCase "case_groupReplace" case_groupReplace
     , testCase "case_simpleDiff" case_simpleDiff
     , testCase "case_simpleDryRun" case_simpleDryRun
+    , testCase "case_simpleUndo" case_simpleUndo
     ]

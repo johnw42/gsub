@@ -163,6 +163,10 @@ updateFileContent patchPath path newContent =
 processSingleFile :: Plan -> FilePath -> IO ()
 processSingleFile plan path = do
     oldContent <- L8.readFile path
+    let patchFile = patchFilePath plan
+    patchExists <- doesFileExist patchFile
+    when patchExists $
+        removeFile patchFile
     let newContent = transformFileContent plan oldContent
     unless (newContent == oldContent) $
         case planMode plan of
@@ -176,10 +180,21 @@ processSingleFile plan path = do
   where
     patchPath = patchFilePath plan
 
+-- | Reverts a change made by a previous run.
+revertPatch :: Plan -> IO ()
+revertPatch plan = do
+    patchData <- readFile (patchFilePath plan)
+    (_, pStdout, pStderr) <-
+        readProcessWithExitCode "patch" ["-R", "-p0"] patchData
+    hPutStr stderr pStderr
+    putStr pStdout
+
 -- | Processes all the files in the plan.
 processFiles :: Plan -> IO ()
-processFiles plan = do
-    forM_ (filesToProcess plan) (processSingleFile plan)
+processFiles plan =
+    case planMode plan of
+        UndoMode -> revertPatch plan
+        _ -> forM_ (filesToProcess plan) (processSingleFile plan)
 
 main :: IO ()
 main = do
