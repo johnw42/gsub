@@ -28,16 +28,6 @@ data FileError = FileError FilePath Error
 instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
 
-data AppState
-    = AppState
-      { fileErrors :: IORef [FileError]
-      , touchedFiles :: IORef [FilePath]
-      }
-
-addTouchedFile :: AppState -> FilePath -> IO ()
-addTouchedFile app path =
-    modifyIORef (touchedFiles app) (path :)
-
 -- | Prints errors and if there are any, otherwise executes an action.
 exitIfErrors :: Handle -> [FileError] -> IO ()
 exitIfErrors stderr errors = do
@@ -96,22 +86,24 @@ diffFlags path =
     ]
     
 -- | Runs the external diff tool over a pair of files.
-runDiff :: Handle -> FilePath -> FilePath -> IO PatchData
-runDiff stderr oldPath newPath = do
+runDiff :: FilePath -> FilePath -> IO PatchData
+runDiff oldPath newPath = do
     (_, diffStdout, diffStderr) <-
         readProcessWithExitCode "diff" diffArgs diffInput
-    hPutStr stderr diffStderr
+    unless (null diffStderr) $
+        error ("diff wrote to stderr:\n" ++ diffStderr)
     return diffStdout
   where
     diffInput = ""
     diffArgs = diffFlags oldPath ++ [oldPath, newPath]
 
 -- | Show the difference between old content and new.
-showDiff :: Handle -> Handle -> FilePath -> FileContent -> IO ()
-showDiff stdout stderr path newContent = do
+showDiff :: Handle -> FilePath -> FileContent -> IO ()
+showDiff stdout path newContent = do
     (_, diffStdout, diffStderr) <-
         readProcessWithExitCode "diff" diffArgs (L8.unpack newContent)
-    hPutStr stderr diffStderr
+    unless (null diffStderr) $
+        error ("diff wrote to stderr:\n" ++ diffStderr)
     hPutStr stdout diffStdout
   where
     diffArgs = diffFlags path ++ [path, "-"]
@@ -139,23 +131,22 @@ withSystemTempFile template f = do
     withTempFile dir template f
 
 -- | Replace the contents of a file.
-updateFileContent :: Handle -> FilePath -> FilePath -> FileContent -> IO ()
-updateFileContent stderr patchPath path newContent =
+updateFileContent :: FilePath -> FilePath -> FileContent -> IO ()
+updateFileContent patchPath path newContent =
     withSystemTempFile "gsub.tmp" $ \tempPath tempH -> do
         L8.hPut tempH newContent
         hClose tempH
-        patch <- runDiff stderr path tempPath
+        patch <- runDiff path tempPath
         appendFile patchPath patch
         copyFile tempPath path
 
 -- | Processes a single file.  Returns (Just path) if the file was
 -- modified.
 processSingleFile :: Handle
-                  -> Handle
                   -> Plan
                   -> FilePath
                   -> IO (Maybe FilePath)
-processSingleFile stdout stderr plan path = do
+processSingleFile stdout plan path = do
     oldContent <- L8.readFile path
     let patchFile = patchFilePath plan
     patchExists <- doesFileExist patchFile
@@ -166,23 +157,24 @@ processSingleFile stdout stderr plan path = do
         then return Nothing
         else case planMode plan of
                  RunMode -> do
-                     updateFileContent stderr patchPath path newContent
+                     updateFileContent patchPath path newContent
                      return (Just path)
                  DryRunMode ->
                      return (Just path)
                  DiffMode -> do
-                     showDiff stdout stderr path newContent
+                     showDiff stdout path newContent
                      return Nothing
   where
     patchPath = patchFilePath plan
 
 -- | Reverts a change made by a previous run.
-revertPatch :: Handle -> Handle -> Plan -> IO ()
-revertPatch stdout stderr plan = do
+revertPatch :: Handle -> Plan -> IO ()
+revertPatch stdout plan = do
     patchData <- readFile (patchFilePath plan)
     (_, pStdout, pStderr) <-
         readProcessWithExitCode "patch" ["-R", "-p0"] patchData
-    hPutStr stderr pStderr
+    unless (null pStderr) $
+        error ("patch wrote to stderr:\n" ++ pStderr)
     hPutStr stdout pStdout
 
 -- | Processes all the files in the plan.  Returns a list of files
@@ -191,19 +183,18 @@ processFiles :: Handle -> Handle -> Plan -> IO [FilePath]
 processFiles stdout stderr plan =
     case planMode plan of
         UndoMode -> do
-            revertPatch stdout stderr plan
+            revertPatch stdout plan
             return []
         _ ->
             fmap catMaybes $
             forM (filesToProcess plan)
-            (processSingleFile stdout stderr plan)
+            (processSingleFile stdout plan)
 
 main :: Handle -> Handle -> IO ()
 main stdout stderr = do
     handle printError $ do
         opts <- execParseArgs
         plan <- makePlan opts
-        app <- AppState <$> newIORef [] <*> newIORef []
         errors <- validateFiles plan
         exitIfErrors stderr errors
         touchedFiles <- processFiles stdout stderr plan
