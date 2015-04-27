@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 -- The name of the package.
-name:                hs-gsub
+name:                gsub
 
 -- The package version.  See the Haskell package versioning policy (PVP) 
 -- for standards guiding when and how versions should be incremented.
@@ -20,9 +20,6 @@ version:             0.1.0.0
 
 -- The license under which the package is released.
 license:             GPL-3
-
--- The file containing the license text.
-license-file:        LICENSE
 
 -- The package author(s).
 author:              John Williams
@@ -52,8 +49,7 @@ library
   
   -- Other library packages from which modules are imported.
   -- To replace: cryptohash, text-icu
-  build-depends:       QuickCheck
-                     , base == 4.7.*
+  build-depends:       base == 4.7.*
                      , bytestring
                      , cryptohash
                      , directory
@@ -61,22 +57,18 @@ library
                      , filepath >= 1.3.0.2
                      , mtl
                      , optparse-applicative
-                     , pcre-heavy
                      , pcre-heavy >= 0.2.2
-                     , pcre-heavy >= 0.2.2
-                     , pcre-light
                      , pcre-light >= 0.4.0.3
-                     , process
                      , process >= 1.2.0.0
                      , random
                      , text
                      , text-icu
                      , transformers
 
-executable hs-gsub
+executable gsub
   hs-source-dirs:      .
   main-is:             Main.hs
-  build-depends:       hs-gsub,
+  build-depends:       gsub,
                        base
   
 test-suite gsub-test
@@ -89,7 +81,7 @@ test-suite gsub-test
                      , bytestring
                      , directory >= 1.2.1.0
                      , filepath >= 1.3.0.2
-                     , hs-gsub
+                     , gsub
                      , pcre-heavy >= 0.2.2
                      , pcre-light >= 0.4.0.3
                      , process >= 1.2.0.0

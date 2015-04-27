@@ -50,7 +50,7 @@ prop_transformFileContent plan before after =
         result' = L8.unpack result
 
 testDataDir = "dist/test_tmp"
-testBin = "dist/build/hs-gsub/hs-gsub"
+testBin = "dist/build/gsub/gsub"
 built = unsafePerformIO (newIORef False)
 
 testFile = (testDataDir </>)
@@ -69,8 +69,8 @@ setUp = do
     unless built' $ do
         callCommand "cabal build"
         writeIORef built True
-    callCommand "rm -rf test_data"
-    callCommand "mkdir test_data"
+    callCommand ("rm -rf " ++ testDataDir)
+    callCommand ("mkdir " ++ testDataDir)
 
 expectStdout :: [String] -> [String] -> IO ()
 expectStdout args stdoutLines = do
@@ -109,7 +109,7 @@ case_badBackref = do
     expectStderr
         ["a", "\\1", testFile "a"]
         1
-        ["hs-gsub: pattern has fewer than 1 groups"]
+        ["gsub: pattern has fewer than 1 groups"]
 
 case_simpleReplace = do
     setUp
