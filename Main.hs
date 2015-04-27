@@ -2,4 +2,6 @@ module Main where
 
 import qualified Gsub
 
-main = Gsub.main
+import System.IO
+
+main = Gsub.main stdout stderr
