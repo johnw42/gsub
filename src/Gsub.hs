@@ -98,13 +98,13 @@ runDiff oldPath newPath = do
     diffArgs = diffFlags oldPath ++ [oldPath, newPath]
 
 -- | Show the difference between old content and new.
-showDiff :: Handle -> FilePath -> FileContent -> IO ()
-showDiff stdout path newContent = do
+showDiff :: FilePath -> FileContent -> IO String
+showDiff path newContent = do
     (_, diffStdout, diffStderr) <-
         readProcessWithExitCode "diff" diffArgs (L8.unpack newContent)
     unless (null diffStderr) $
         error ("diff wrote to stderr:\n" ++ diffStderr)
-    hPutStr stdout diffStdout
+    return diffStdout
   where
     diffArgs = diffFlags path ++ [path, "-"]
 
@@ -142,11 +142,10 @@ updateFileContent patchPath path newContent =
 
 -- | Processes a single file.  Returns (Just path) if the file was
 -- modified.
-processSingleFile :: Handle
-                  -> Plan
+processSingleFile :: Plan
                   -> FilePath
-                  -> IO (Maybe FilePath)
-processSingleFile stdout plan path = do
+                  -> IO (Maybe String)
+processSingleFile plan path = do
     oldContent <- L8.readFile path
     let patchFile = patchFilePath plan
     patchExists <- doesFileExist patchFile
@@ -158,37 +157,35 @@ processSingleFile stdout plan path = do
         else case planMode plan of
                  RunMode -> do
                      updateFileContent patchPath path newContent
-                     return (Just path)
+                     return $ Just (path ++ "\n")
                  DryRunMode ->
-                     return (Just path)
+                     return  $ Just (path ++ "\n")
                  DiffMode -> do
-                     showDiff stdout path newContent
-                     return Nothing
+                     Just `liftM` showDiff path newContent
   where
     patchPath = patchFilePath plan
 
 -- | Reverts a change made by a previous run.
-revertPatch :: Handle -> Plan -> IO ()
-revertPatch stdout plan = do
+revertPatch :: Plan -> IO String
+revertPatch plan = do
     patchData <- readFile (patchFilePath plan)
     (_, pStdout, pStderr) <-
         readProcessWithExitCode "patch" ["-R", "-p0"] patchData
     unless (null pStderr) $
         error ("patch wrote to stderr:\n" ++ pStderr)
-    hPutStr stdout pStdout
+    return pStdout
 
 -- | Processes all the files in the plan.  Returns a list of files
 -- that were modified.
-processFiles :: Handle -> Handle -> Plan -> IO [FilePath]
-processFiles stdout stderr plan =
+processFiles :: Plan -> IO [String]
+processFiles plan =
     case planMode plan of
         UndoMode -> do
-            revertPatch stdout plan
-            return []
+            output <- revertPatch plan
+            return [output]
         _ ->
             fmap catMaybes $
-            forM (filesToProcess plan)
-            (processSingleFile stdout plan)
+            forM (filesToProcess plan) (processSingleFile plan)
 
 main :: Handle -> Handle -> IO ()
 main stdout stderr = do
@@ -197,8 +194,8 @@ main stdout stderr = do
         plan <- makePlan opts
         errors <- validateFiles plan
         exitIfErrors stderr errors
-        touchedFiles <- processFiles stdout stderr plan
-        forM_ touchedFiles $ hPutStrLn stdout
+        messages <- processFiles plan
+        forM_ messages $ hPutStr stdout
   where
     printError (ErrorCall msg) = do
         name <- getProgName
