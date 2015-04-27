@@ -38,33 +38,22 @@ addTouchedFile :: AppState -> FilePath -> IO ()
 addTouchedFile app path =
     modifyIORef (touchedFiles app) (path :)
 
-addFileError :: AppState -> FilePath -> Error -> IO ()
-addFileError app p e =
-    modifyIORef (fileErrors app) (FileError p e :)
-
 -- | Prints errors and if there are any, otherwise executes an action.
-exitIfErrors :: Handle -> AppState -> IO ()
-exitIfErrors stderr app = do
-    errors <- readIORef (fileErrors app)
+exitIfErrors :: Handle -> [FileError] -> IO ()
+exitIfErrors stderr errors = do
     unless (null errors) $ do
-        mapM_ (hPrint stderr) (reverse errors)
+        mapM_ (hPrint stderr) errors
         exitWith (ExitFailure 2)
 
 -- | Tests whether a file can be operated on.  Adds an error if it
 -- can't be.
-checkFile :: AppState -> FilePath -> IO ()
-checkFile app path = do
-    problem <- loop checks
-    when (isJust problem) $
-        addFileError app path (fromJust problem)
-    
+checkFile :: FilePath -> IO (Maybe FileError)
+checkFile path = loop checks
   where
     loop [] = return Nothing
     loop (c:cs) = do
-        problem <- c path
-        case problem of
-            Nothing -> loop cs
-            _ -> return problem
+        problem <- c
+        maybe (loop cs) (return . Just) problem
 
     checks =
         [ check "is a directory" $ fmap not . doesDirectoryExist
@@ -73,16 +62,16 @@ checkFile app path = do
         , check "not writable" $ fmap writable . getPermissions
         ]
 
-    check problem test path = do
+    check problem test = do
         ok <- test path
         if ok
             then return Nothing
-            else return (Just problem)
+            else return (Just (FileError path problem))
 
 -- | Checks that all files in the plan can be operated upon.
-validateFiles :: AppState -> Plan -> IO ()
-validateFiles app plan =
-    mapM_ (checkFile app) (filesToProcess plan)
+validateFiles :: Plan -> IO [FileError]
+validateFiles plan =
+    fmap catMaybes $ mapM checkFile (filesToProcess plan)
 
 -- | Applies the specified transformation to a line of a file.
 transformLine :: Transformation -> FileContent -> FileContent
@@ -159,8 +148,13 @@ updateFileContent stderr patchPath path newContent =
         appendFile patchPath patch
         copyFile tempPath path
 
--- | Processes a single file.
-processSingleFile :: Handle -> Handle -> Plan -> FilePath -> IO ()
+-- | Processes a single file.  Returns (Just path) if the file was
+-- modified.
+processSingleFile :: Handle
+                  -> Handle
+                  -> Plan
+                  -> FilePath
+                  -> IO (Maybe FilePath)
 processSingleFile stdout stderr plan path = do
     oldContent <- L8.readFile path
     let patchFile = patchFilePath plan
@@ -168,15 +162,17 @@ processSingleFile stdout stderr plan path = do
     when patchExists $
         removeFile patchFile
     let newContent = transformFileContent plan oldContent
-    unless (newContent == oldContent) $
-        case planMode plan of
-            RunMode -> do
-                hPutStrLn stdout path
-                updateFileContent stderr patchPath path newContent
-            DryRunMode ->
-                hPutStrLn stdout path
-            DiffMode ->
-                showDiff stdout stderr path newContent
+    if newContent == oldContent
+        then return Nothing
+        else case planMode plan of
+                 RunMode -> do
+                     updateFileContent stderr patchPath path newContent
+                     return (Just path)
+                 DryRunMode ->
+                     return (Just path)
+                 DiffMode -> do
+                     showDiff stdout stderr path newContent
+                     return Nothing
   where
     patchPath = patchFilePath plan
 
@@ -189,13 +185,18 @@ revertPatch stdout stderr plan = do
     hPutStr stderr pStderr
     hPutStr stdout pStdout
 
--- | Processes all the files in the plan.
-processFiles :: Handle -> Handle -> Plan -> IO ()
+-- | Processes all the files in the plan.  Returns a list of files
+-- that were modified.
+processFiles :: Handle -> Handle -> Plan -> IO [FilePath]
 processFiles stdout stderr plan =
     case planMode plan of
-        UndoMode -> revertPatch stdout stderr plan
-        _ -> forM_ (filesToProcess plan)
-             (processSingleFile stdout stderr plan)
+        UndoMode -> do
+            revertPatch stdout stderr plan
+            return []
+        _ ->
+            fmap catMaybes $
+            forM (filesToProcess plan)
+            (processSingleFile stdout stderr plan)
 
 main :: Handle -> Handle -> IO ()
 main stdout stderr = do
@@ -203,10 +204,10 @@ main stdout stderr = do
         opts <- execParseArgs
         plan <- makePlan opts
         app <- AppState <$> newIORef [] <*> newIORef []
-        validateFiles app plan
-        exitIfErrors stderr app
-        processFiles stdout stderr plan
-        exitIfErrors stderr app
+        errors <- validateFiles plan
+        exitIfErrors stderr errors
+        touchedFiles <- processFiles stdout stderr plan
+        forM_ touchedFiles $ hPutStrLn stdout
   where
     printError (ErrorCall msg) = do
         name <- getProgName
