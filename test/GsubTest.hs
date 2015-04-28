@@ -65,15 +65,17 @@ run' args = do
     exitCode <- handle catchExitCode $
                 withArgs args $
                 withProgName "gsub" $
-                withFile "stdout.txt" WriteMode $ \out ->
-                withFile "stderr.txt" WriteMode $ \err -> do
+                withFile stdoutFile WriteMode $ \out ->
+                withFile stderrFile WriteMode $ \err -> do
                     Gsub.main out err
                     return ExitSuccess
-    outText <- readFile "stdout.txt"
-    errText <- readFile "stderr.txt"
+    outText <- readFile stdoutFile
+    errText <- readFile stderrFile
     return (exitCode, outText, errText)
   where
     catchExitCode e@(ExitFailure _) = return e
+    stdoutFile = testFile "stdout.txt"
+    stderrFile = testFile "stderr.txt"
 
 setUp = do
     callCommand ("rm -rf " ++ testDataDir)
