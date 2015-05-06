@@ -86,6 +86,7 @@ test-suite gsub-test
                      , pcre-light >= 0.4.0.3
                      , process >= 1.2.0.0
                      , random
+                     , silently >= 1.2.4.1
                      , test-framework
                      , test-framework-hunit
                      , test-framework-quickcheck2

@@ -15,6 +15,7 @@ import System.Environment
 import System.Exit
 import System.FilePath
 import System.IO
+import System.IO.Silently
 import System.Process
 import Test.Framework (testGroup)
 import Test.Framework.Providers.HUnit (testCase)
@@ -61,21 +62,19 @@ assertTestFile path content = do
     content' <- readFile (testFile path)
     assertEqual ("wrong content for " ++ path) content content'
 
-run' args = do
-    exitCode <- handle catchExitCode $
+run :: [String] -> IO (ExitCode, String, String)
+run args = do
+    (outText, (errText, exitCode)) <- hCapture [stdout] $ do
+        (errText, exitCode) <- hCapture [stderr] $ do
+            handle catchExitCode $ do
                 withArgs args $
-                withProgName "gsub" $
-                withFile stdoutFile WriteMode $ \out ->
-                withFile stderrFile WriteMode $ \err -> do
-                    Gsub.main out err
-                    return ExitSuccess
-    outText <- readFile stdoutFile
-    errText <- readFile stderrFile
+                    withProgName "gsub" $ do
+                        Gsub.main stdout stderr
+                        return ExitSuccess
+        return (errText, exitCode)
     return (exitCode, outText, errText)
   where
     catchExitCode e@(ExitFailure _) = return e
-    stdoutFile = testFile "stdout.txt"
-    stderrFile = testFile "stderr.txt"
 
 setUp = do
     callCommand ("rm -rf " ++ testDataDir)
@@ -83,24 +82,24 @@ setUp = do
 
 expectStdout :: [String] -> [String] -> IO ()
 expectStdout args stdoutLines = do
-    (exitCode', stdout', stderr') <- run' args
+    (exitCode', stdout', stderr') <- run args
     assertEqual "output on stderr" "" stderr'
     assertEqual "wrong stdout" stdoutLines (lines stdout')
     assertEqual "wrong exit code" ExitSuccess exitCode'
 
 expectStderr :: [String] -> Int -> [String] -> IO ()
 expectStderr args exitCode stderrLines = do
-    (exitCode', stdout', stderr') <- run' args
+    (exitCode', stdout', stderr') <- run args
     assertEqual "wrong stderr" stderrLines (lines stderr')
     assertEqual "output on stdout" "" stdout'
     assertEqual "wrong exit code" (ExitFailure exitCode) exitCode'
 
--- case_noArgs = do
---     setUp
---     (exitCode, stdout, stderr) <- run' []
---     assertEqual "bad exit code" (ExitFailure 1) exitCode
---     assertEqual "wrong stdout" "" stdout
---     assertBool "empty stderr" ("" /= stderr)
+case_noArgs = do
+    setUp
+    (exitCode, stdout, stderr) <- run []
+    assertEqual "bad exit code" (ExitFailure 1) exitCode
+    assertEqual "wrong stdout" "" stdout
+    assertBool "empty stderr" ("" /= stderr)
 
 case_badFileArgs = do
     setUp
@@ -180,7 +179,7 @@ tests =
     testGroup "Gsub"
     [ testProperty "transformLine" prop_transformLine
     , testProperty "transformFileContent" prop_transformFileContent
-    --, testCase "case_noArgs" case_noArgs
+    , testCase "case_noArgs" case_noArgs
     , testCase "case_badFileArgs" case_badFileArgs
     , testCase "case_badBackref" case_badBackref
     , testCase "case_simpleReplace" case_simpleReplace
