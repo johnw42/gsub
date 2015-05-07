@@ -18,7 +18,7 @@ import Data.Monoid (First(..), mconcat)
 import System.Directory
 import System.Environment
 import System.Exit
-import System.IO hiding (stderr, stdout)
+import System.IO
 import System.Process
 
 type PatchData = String
@@ -29,8 +29,8 @@ instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
 
 -- | Prints errors and if there are any, otherwise executes an action.
-exitIfErrors :: Handle -> [FileError] -> IO ()
-exitIfErrors stderr errors = do
+exitIfErrors :: [FileError] -> IO ()
+exitIfErrors errors = do
     unless (null errors) $ do
         mapM_ (hPrint stderr) errors
         exitWith (ExitFailure 2)
@@ -187,15 +187,16 @@ processFiles plan =
             fmap catMaybes $
             forM (filesToProcess plan) (processSingleFile plan)
 
-main :: Handle -> Handle -> IO ()
-main stdout stderr = do
+main :: IO ()
+main = do
     handle printError $ do
         opts <- execParseArgs
         plan <- makePlan opts
         errors <- validateFiles plan
-        exitIfErrors stderr errors
+        exitIfErrors errors
         messages <- processFiles plan
-        forM_ messages $ hPutStr stdout
+        forM_ messages $
+            hPutStr stdout
   where
     printError (ErrorCall msg) = do
         name <- getProgName

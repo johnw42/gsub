@@ -16,7 +16,6 @@ import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.Silently
-import System.Process
 import Test.Framework (testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -69,7 +68,7 @@ run args = do
             handle catchExitCode $ do
                 withArgs args $
                     withProgName "gsub" $ do
-                        Gsub.main stdout stderr
+                        Gsub.main
                         return ExitSuccess
         return (errText, exitCode)
     return (exitCode, outText, errText)
@@ -77,8 +76,10 @@ run args = do
     catchExitCode e@(ExitFailure _) = return e
 
 setUp = do
-    callCommand ("rm -rf " ++ testDataDir)
-    callCommand ("mkdir " ++ testDataDir)
+    exists <- doesDirectoryExist testDataDir
+    when exists $
+        removeDirectoryRecursive testDataDir
+    createDirectory testDataDir
 
 expectStdout :: [String] -> [String] -> IO ()
 expectStdout args stdoutLines = do
