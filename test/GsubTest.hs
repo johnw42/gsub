@@ -5,6 +5,7 @@ import Gsub
 import Plan
 import PlanTest
 
+import Control.Exception
 import Control.Monad
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.IORef
@@ -14,8 +15,7 @@ import System.Environment
 import System.Exit
 import System.FilePath
 import System.IO
-import System.IO.Unsafe
-import System.Process
+import System.IO.Silently
 import Test.Framework (testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -52,7 +52,6 @@ prop_transformFileContent plan before after =
 
 testDataDir = "dist/test_tmp"
 testBin = "dist/build/gsub/gsub"
-built = unsafePerformIO (newIORef False)
 
 testFile = (testDataDir </>)
 
@@ -62,8 +61,19 @@ assertTestFile path content = do
     content' <- readFile (testFile path)
     assertEqual ("wrong content for " ++ path) content content'
 
+run :: [String] -> IO (ExitCode, String, String)
 run args = do
-    readProcessWithExitCode testBin args ""
+    (outText, (errText, exitCode)) <- hCapture [stdout] $ do
+        (errText, exitCode) <- hCapture [stderr] $ do
+            handle catchExitCode $ do
+                withArgs args $
+                    withProgName "gsub" $ do
+                        Gsub.main
+                        return ExitSuccess
+        return (errText, exitCode)
+    return (exitCode, outText, errText)
+  where
+    catchExitCode e@(ExitFailure _) = return e
 
 run' args = do
     withFile "stdout.txt" WriteMode $ \stdout ->
@@ -76,12 +86,10 @@ run' args = do
     return (0, stdout', stderr')
 
 setUp = do
-    built' <- readIORef built
-    unless built' $ do
-        callCommand "cabal build"
-        writeIORef built True
-    callCommand ("rm -rf " ++ testDataDir)
-    callCommand ("mkdir " ++ testDataDir)
+    exists <- doesDirectoryExist testDataDir
+    when exists $
+        removeDirectoryRecursive testDataDir
+    createDirectory testDataDir
 
 expectStdout :: [String] -> [String] -> IO ()
 expectStdout args stdoutLines = do
