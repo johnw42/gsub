@@ -1,14 +1,15 @@
 module Plan where
 
+import Directory
 import FindReplace
 import Options
 import Utils
 
-import Control.Monad (liftM, liftM2)
-import qualified Crypto.Hash.SHA1 as SHA1
+import Control.Applicative ((<$>))
+import Control.Exception (assert)
+import Control.Monad (liftM, liftM2, when)
 import qualified Data.List as L
 import qualified Data.ByteString.Char8 as B8
-import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
 import Text.Printf (printf)
 
@@ -24,7 +25,7 @@ data Plan
     = Plan
       { options :: Options
       , transformation :: Transformation
-      , patchFilePath :: FilePath
+      , patchFilePath :: Maybe FilePath
       }
 
 -- A facade for options.
@@ -39,22 +40,22 @@ ignoreCase = ignoreCaseOpt . options
 
 makePlan :: Options -> IO Plan
 makePlan opts = do
-    tempDir <- getTemporaryDirectory
-    let basename = defaultPatchFileName opts
-        patchPath = tempDir </> basename
+    patchPath <-
+        case planModeOpt opts of
+        DiffMode -> return Nothing
+        _ -> Just <$> findPatchPath (patchFilePathOpt opts)
     case makePlan' opts patchPath of
         Left e -> error e
         Right plan -> return plan
 
 -- | Converts options into an execution plan.
-makePlan' :: Options -> FilePath -> Either String Plan
-makePlan' opts path = do
+makePlan' :: Options -> Maybe FilePath -> Either String Plan
+makePlan' opts patchPath = do
     xfrm <- if fixedStringsOpt opts
             then Right fixed
             else checkRegex compileRegexM regexReplacementM
-    return (Plan opts xfrm patchFilePath)
+    return (Plan opts xfrm patchPath)
   where
-    patchFilePath = maybe path id (patchFilePathOpt opts)
     fixed = TransformFixed caseHandling fixedPattern fixedReplacement
     checkRegex reM repM = do
         re <- reM
@@ -73,20 +74,35 @@ makePlan' opts path = do
     pattern = "(" ++ patternStringOpt opts ++ ")"
     compileRegexM = compileRegex (ignoreCaseOpt opts) pattern
 
--- | Converts a ByteString to a string of hexadecimal digits.
-toHexString :: B8.ByteString -> String
-toHexString = concat . map (printf "%02x") . B8.unpack
+-- Count the number of '#' characters in a file path.
+countPatternSlots :: FilePath -> Int
+countPatternSlots p = length $ L.elemIndices '#' p
 
-hashOptions :: Options -> String
-hashOptions opts = 
-    toHexString $ SHA1.hash $ B8.pack $ L.intercalate "\0" planStrings
-    where
-        planStrings =
-            [ patternStringOpt opts
-            , replacementStringOpt opts
-            , if ignoreCaseOpt opts then "ignoreCase" else ""
-            , if fixedStringsOpt opts then "fixedStrings" else ""
-            ] ++ filesOpt opts
-
-defaultPatchFileName :: Options -> String
-defaultPatchFileName opts = "gsub_" ++ (hashOptions opts) ++ ".diff"
+-- Find a nonexistant file matching the given pattern, which consists
+-- of a file path with zero or one '#' charcters.  If the pattern
+-- contains a '#' character, it may be replaces with any integer to
+-- produce a nonexistant file name.
+findPatchPath :: FilePath -> IO FilePath
+findPatchPath p = case countPatternSlots p of
+    0 -> do
+        exists <- doesPathExist p
+        when exists $
+            error ("Patch file already exists: " ++ p)
+        return p
+    1 -> loop (expandDiffPattern p)
+    _ -> error ("Invalid patch file pattern: " ++ p)
+  where
+    loop (p:ps) = do
+        exists <- doesPathExist p
+        if not exists
+            then return p
+            else loop ps
+        
+-- Produce an infinite list of candidate file paths corresponding to a
+-- pattern containing a single '#' character.
+expandDiffPattern :: FilePath -> [FilePath]
+expandDiffPattern p =
+    assert (countPatternSlots p == 1) $
+    [prefix ++ show i ++ suffix | i <- [0..]]
+  where
+    (prefix, _:suffix) = break (=='#') p

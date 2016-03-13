@@ -12,7 +12,7 @@ import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
 import Data.Either
 import Data.IORef
-import Data.List (isPrefixOf)
+import Data.List (isPrefixOf, mapAccumL)
 import Data.Maybe (catMaybes, fromJust, isJust)
 import Data.Monoid (First(..), mconcat)
 import System.Directory
@@ -71,9 +71,19 @@ transformLine (TransformRegex regex rep) =
     transformLineRegex regex rep
 
 -- | Applies the specified transformation to a whole file's content.
-transformFileContent :: Plan -> FileContent -> FileContent
-transformFileContent plan = L8.unlines . map transform . L8.lines
+-- Returns a pair of the modified content and the number of lines
+-- changed.
+transformFileContent :: Plan -> FileContent -> (Int, FileContent)
+transformFileContent plan content = (numChanges, L8.unlines lines')
   where
+    lines = L8.lines content
+    (numChanges, lines') = mapAccumL step 0 lines
+    step accum line = (accum', line')
+      where
+        line' = transform line
+        accum'
+            | line' == line = accum
+            | otherwise     = 1 + accum
     transform = transformLine (transformation plan)
 
 -- | Finds the flags that should be passed to @diff@.
@@ -140,52 +150,71 @@ updateFileContent patchPath path newContent =
         appendFile patchPath patch
         copyFile tempPath path
 
--- | Processes a single file.  Returns (Just path) if the file was
--- modified.
-processSingleFile :: Plan
-                  -> FilePath
-                  -> IO (Maybe String)
+-- | Processes a single file.  Returns the number of lines changed in
+-- this file.
+processSingleFile :: Plan -> FilePath -> IO Int
 processSingleFile plan path = do
     oldContent <- L8.readFile path
-    let patchFile = patchFilePath plan
-    patchExists <- doesFileExist patchFile
-    when patchExists $
-        removeFile patchFile
-    let newContent = transformFileContent plan oldContent
-    if newContent == oldContent
-        then return Nothing
-        else case planMode plan of
-                 RunMode -> do
-                     updateFileContent patchPath path newContent
-                     return $ Just (path ++ "\n")
-                 DryRunMode ->
-                     return  $ Just (path ++ "\n")
-                 DiffMode -> do
-                     Just `liftM` showDiff path newContent
+    let (numChanges, newContent) = transformFileContent plan oldContent
+    when (numChanges > 0) $
+        case planMode plan of
+        RunMode -> do
+            updateFileContent
+                (fromJust patchPath) path newContent
+            printChanges numChanges
+        DryRunMode ->
+            printChanges numChanges
+        DiffMode -> do
+            diff <- showDiff path newContent
+            putStr diff
+    return numChanges
   where
     patchPath = patchFilePath plan
+    printChanges n =
+        putStrLn (path ++ ": " ++ showLineCount n ++ " changed")
 
--- | Reverts a change made by a previous run.
-revertPatch :: Plan -> IO String
-revertPatch plan = do
-    patchData <- readFile (patchFilePath plan)
-    (_, pStdout, pStderr) <-
-        readProcessWithExitCode "patch" ["-R", "-p0"] patchData
-    unless (null pStderr) $
-        error ("patch wrote to stderr:\n" ++ pStderr)
-    return pStdout
+-- Make a phrase showing a count of things.
+showCount :: String -- the thing (singular)
+          -> String -- the things (plural)
+          -> Int    -- the number of things
+          -> String
+showCount sing plural n =
+    show n ++ " " ++ (if n == 1 then sing else plural)
 
--- | Processes all the files in the plan.  Returns a list of files
--- that were modified.
-processFiles :: Plan -> IO [String]
-processFiles plan =
+showLineCount = showCount "line" "lines"
+
+showFileCount = showCount "file" "files"
+
+-- A tuple of the count of changed files and the count of changed
+-- lines in those files.
+type ChangeCounts = (Int,Int)
+
+-- | Processes all the files in the plan.  Returns the number of files
+-- changed and the number of lines changed.
+processFiles :: Plan -> IO ChangeCounts
+processFiles plan = do
+    lineCounts <- forM (filesToProcess plan) (processSingleFile plan)
+    let filesChanged = length $ filter (>0) lineCounts
+        linesChanged = sum lineCounts
+    return (filesChanged, linesChanged)
+
+-- Prints a summary of what the program did.
+printSummary :: Plan -> ChangeCounts -> IO ()
+printSummary plan (filesChanged, linesChanged) =
     case planMode plan of
-        UndoMode -> do
-            output <- revertPatch plan
-            return [output]
-        _ ->
-            fmap catMaybes $
-            forM (filesToProcess plan) (processSingleFile plan)
+    RunMode -> do
+        putStrLn ("Changed " ++
+                  showLineCount linesChanged ++ " in " ++
+                  showFileCount filesChanged)
+        putStrLn ("Diff saved in " ++
+                  fromJust (patchFilePath plan))
+    DryRunMode -> do
+        putStrLn ("Would have changed " ++
+                  showLineCount linesChanged ++ " in " ++
+                  showFileCount filesChanged)
+        putStrLn ("Diff would have been saved in " ++
+                  fromJust (patchFilePath plan))
+    DiffMode -> return ()
 
 main :: Handle -> Handle -> IO ()
 main stdout stderr = do
@@ -194,8 +223,8 @@ main stdout stderr = do
         plan <- makePlan opts
         errors <- validateFiles plan
         exitIfErrors stderr errors
-        messages <- processFiles plan
-        forM_ messages $ hPutStr stdout
+        changes <- processFiles plan
+        printSummary plan changes
   where
     printError (ErrorCall msg) = do
         name <- getProgName

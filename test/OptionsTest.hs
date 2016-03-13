@@ -18,18 +18,16 @@ instance Arbitrary Options where
     arbitrary = Options 
         <$> fmap fromAlpha arbitrary
         <*> fmap fromAlpha arbitrary
-        <*> arbitrary
-        <*> elements [RunMode, DryRunMode, DiffMode, UndoMode]
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
-        <*> arbitrary
+        <*> arbitrary -- filesOpt
+        <*> elements [RunMode, DryRunMode, DiffMode]
+        <*> arbitrary -- backupSuffixOpt
+        <*> arbitrary -- fixedStringsOpt
+        <*> arbitrary -- patchFilePathOpt
+        <*> arbitrary -- keepGoingOpt
+        <*> arbitrary -- ignoreCaseOpt
     shrink opts = do
         files <- shrink (filesOpt opts)
         bs <- shrink (backupSuffixOpt opts)
-        undoDir <- shrink (undoDirOpt opts)
         pfp <- shrink (patchFilePathOpt opts)
         ps <- shrink (patternStringOpt opts)
         rs <- shrink (replacementStringOpt opts)
@@ -38,7 +36,6 @@ instance Arbitrary Options where
             , patternStringOpt = ps
             , replacementStringOpt = rs
             , backupSuffixOpt = bs
-            , undoDirOpt = undoDir
             , patchFilePathOpt = pfp
             }
 
@@ -163,12 +160,6 @@ prop_parseArgs_withDryRun name =
         Left _ -> discard
         Right opts -> planModeOpt opts == DryRunMode
 
-prop_parseArgs_withUndo name =
-    forAll arbFullArgList $ \args ->
-    ("-u" `elem` args || "--undo" `elem` args) ==> case parseArgs name args of
-        Left _ -> discard
-        Right opts -> planModeOpt opts == UndoMode
-
 prop_parseArgs_withDefaultMode name =
     forAll arbFullArgList $ \args ->
     not (any (`elem` modeFlags) args) ==> case parseArgs name args of
@@ -184,6 +175,5 @@ tests =
     , testProperty "parseArgs_withFlags" prop_parseArgs_withFlags
     , testProperty "parseArgs_withDiff" prop_parseArgs_withDiff
     , testProperty "parseArgs_withDryRun" prop_parseArgs_withDryRun
-    , testProperty "parseArgs_withUndo" prop_parseArgs_withUndo
     , testProperty "parseArgs_withDefaultMode" prop_parseArgs_withDefaultMode
     ]

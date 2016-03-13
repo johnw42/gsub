@@ -3,7 +3,7 @@ module Options where
 import Utils
 
 import Data.Maybe (isJust, fromJust)
-import Options.Applicative ((<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure, flag, flag', getParseResult, help, helper, idm, info, internal, long, many, metavar, optional, prefs, pure, short, some, strArgument, strOption, switch)
+import Options.Applicative ((<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure, flag, flag', getParseResult, help, helper, idm, info, internal, long, many, metavar, optional, prefs, pure, short, some, strArgument, strOption, switch, value)
 
 type Error = String
 
@@ -11,7 +11,6 @@ data PlanMode
     = RunMode
     | DryRunMode
     | DiffMode
-    | UndoMode
     deriving (Eq, Show)
 
 -- Command-line options.
@@ -23,12 +22,12 @@ data Options
       , planModeOpt :: PlanMode
       , backupSuffixOpt :: Maybe String
       , fixedStringsOpt :: Bool
-      , patchFilePathOpt :: Maybe FilePath
+      , patchFilePathOpt :: FilePath
       , keepGoingOpt :: Bool
       , ignoreCaseOpt :: Bool
-      , undoDirOpt :: Maybe FilePath
       } deriving (Eq, Show)
 
+-- See https://github.com/pcapriotti/optparse-applicative/blob/master/README.md
 parser :: Parser Options
 parser =
     Options
@@ -41,19 +40,17 @@ parser =
     <*> (some $ strArgument $
          metavar "<file>..." <>
          help "List of files to process.")
-    <*> (pure RunMode <|>
-         (flag' DiffMode $
-          short 'D' <>
-          long "diff" <>
-          help "Don't modify files or create a patch file, just show the diff.") <|>
+    <*> (pure RunMode
+         <|>
          (flag' DryRunMode $
           short 'N' <>
           long "no-modify" <>
-          help "Don't modify files, just create a patch file.") <|>
-         (flag' UndoMode $
-          short 'u' <>
-          long "undo" <>
-          help "Undo a previous command with the same arguments."))
+          help "Don't modify any files, just show stats.")
+         <|>
+         (flag' DiffMode $
+          short 'D' <>
+          long "diff" <>
+          help "Don't modify files or create a patch file, just show the diff."))
     <*> (optional $ strOption $
          -- TODO: Is this even useful?
          short 'b' <>
@@ -64,11 +61,12 @@ parser =
          short 'F' <>
          long "fixed-strings" <>
          help "Treat <pattern> and <replacement> as literal strings (like grep -F).")
-    <*> (optional $ strOption $
-         short 'P' <>
+    <*> (strOption $
+         short 'p' <>
          long "patch-file" <>
          metavar "<path>" <>
-         help "Set the backup file to create.")
+         value "gsub#.diff" <>
+         help "Set the patch file to create.")
     <*> (switch $
          -- TODO: Is this even useful?
          short 'k' <>
@@ -78,9 +76,6 @@ parser =
          short 'i' <>
          long "ignore-case" <>
          help "Ignore case when matching.")
-    <*> (optional $ strOption $
-         long "--undo-dir" <>
-         internal)
          
 
 execParseArgs :: IO Options

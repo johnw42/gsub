@@ -10,6 +10,7 @@ import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.IORef
 import Data.List (isInfixOf)
 import System.Directory
+import System.Environment
 import System.Exit
 import System.FilePath
 import System.IO
@@ -46,7 +47,7 @@ prop_transformFileContent plan before after =
         replacement = replacementString plan
         content' = before ++ pattern ++ after
         content = L8.pack content'
-        result = transformFileContent plan content
+        (_, result) = transformFileContent plan content
         result' = L8.unpack result
 
 testDataDir = "dist/test_tmp"
@@ -63,6 +64,16 @@ assertTestFile path content = do
 
 run args = do
     readProcessWithExitCode testBin args ""
+
+run' args = do
+    withFile "stdout.txt" WriteMode $ \stdout ->
+        withFile "stderr.txt" WriteMode $ \stderr ->
+        withArgs args $
+        withProgName "prog_name" $
+        Gsub.main stdout stderr
+    stdout' <- readFile "stdout.txt"
+    stderr' <- readFile "stderr.txt"
+    return (0, stdout', stderr')
 
 setUp = do
     built' <- readIORef built
@@ -115,24 +126,30 @@ case_simpleReplace = do
     setUp
     writeTestFile "a" "foo\n"
     expectStdout
-        ["foo", "bar", testFile "a"]
-        [testFile "a"]
+        ["-p", testFile "p", "foo", "bar", testFile "a"]
+        [testFile "a" ++ ": 1 line changed"
+        ,"Changed 1 line in 1 file"
+        ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "bar\n"
 
 case_regexReplace = do
     setUp
     writeTestFile "a" "foo\n"
     expectStdout
-        ["o+", "x", testFile "a"]
-        [testFile "a"]
+        ["-p", testFile "p", "o+", "x", testFile "a"]
+        [testFile "a" ++ ": 1 line changed"
+        ,"Changed 1 line in 1 file"
+        ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "fx\n"
 
 case_groupReplace = do
     setUp
     writeTestFile "a" "ax by cz\n"
     expectStdout
-        ["([a-c])([x-z])", "\\0:\\2\\1", testFile "a"]
-        [testFile "a"]
+        ["-p", testFile "p", "([a-c])([x-z])", "\\0:\\2\\1", testFile "a"]
+        [testFile "a" ++ ": 1 line changed"
+        ,"Changed 1 line in 1 file"
+        ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "ax:xa by:yb cz:zc\n"
 
 case_simpleDiff = do
@@ -153,19 +170,11 @@ case_simpleDryRun = do
     setUp
     writeTestFile "a" "foo\n"
     expectStdout
-        ["--no-modify", "foo", "bar", testFile "a"]
-        [testFile "a"]
+        ["-p", testFile "p", "--no-modify", "foo", "bar", testFile "a"]
+        [testFile "a" ++ ": 1 line changed"
+        ,"Would have changed 1 line in 1 file"
+        ,"Diff would have been saved in " ++ testFile "p"]
     assertTestFile "a" "foo\n"
-
-case_simpleUndo = do
-    setUp
-    writeTestFile "z" "foo\n"
-    expectStdout args [testFile "z"]
-    assertTestFile "z" "bar\n"
-    expectStdout ("--undo" : args) ["patching file " ++ testFile "z"]
-    assertTestFile "z" "foo\n"
-  where
-    args = ["foo", "bar", testFile "z"]
 
 tests =
     testGroup "Gsub"
@@ -179,5 +188,4 @@ tests =
     , testCase "case_groupReplace" case_groupReplace
     , testCase "case_simpleDiff" case_simpleDiff
     , testCase "case_simpleDryRun" case_simpleDryRun
-    , testCase "case_simpleUndo" case_simpleUndo
     ]
