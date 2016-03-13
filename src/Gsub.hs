@@ -18,6 +18,7 @@ import Data.Monoid (First(..), mconcat)
 import System.Directory
 import System.Environment
 import System.Exit
+import System.FilePath
 import System.IO
 import System.Process
 
@@ -29,8 +30,8 @@ instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
 
 -- | Prints errors and if there are any, otherwise executes an action.
-exitIfErrors :: Handle -> [FileError] -> IO ()
-exitIfErrors stderr errors = do
+exitIfErrors :: [FileError] -> IO ()
+exitIfErrors errors = do
     unless (null errors) $ do
         mapM_ (hPrint stderr) errors
         exitWith (ExitFailure 2)
@@ -50,6 +51,7 @@ checkFile path = loop checks
         , check "no such file" $ doesFileExist
         , check "not readable" $ fmap readable . getPermissions
         , check "not writable" $ fmap writable . getPermissions
+        , check "open in emacs" $ fmap not . testIsOpenInEmacs
         ]
 
     check problem test = do
@@ -57,6 +59,14 @@ checkFile path = loop checks
         if ok
             then return Nothing
             else return (Just (FileError path problem))
+
+-- Test whether a file appears to be open in emacs.
+testIsOpenInEmacs :: FilePath -> IO Bool
+testIsOpenInEmacs p = doesFileExist lockFile
+  where
+    lockFile = dirName </> ".#" ++ baseName
+    (dirName, baseName) = splitFileName p
+    
 
 -- | Checks that all files in the plan can be operated upon.
 validateFiles :: Plan -> IO [FileError]
@@ -222,7 +232,7 @@ main = do
         opts <- execParseArgs
         plan <- makePlan opts
         errors <- validateFiles plan
-        exitIfErrors stderr errors
+        exitIfErrors errors
         changes <- processFiles plan
         printSummary plan changes
   where

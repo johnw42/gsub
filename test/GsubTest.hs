@@ -75,16 +75,6 @@ run args = do
   where
     catchExitCode e@(ExitFailure _) = return e
 
-run' args = do
-    withFile "stdout.txt" WriteMode $ \stdout ->
-        withFile "stderr.txt" WriteMode $ \stderr ->
-        withArgs args $
-        withProgName "prog_name" $
-        Gsub.main stdout stderr
-    stdout' <- readFile "stdout.txt"
-    stderr' <- readFile "stderr.txt"
-    return (0, stdout', stderr')
-
 setUp = do
     exists <- doesDirectoryExist testDataDir
     when exists $
@@ -114,14 +104,19 @@ case_noArgs = do
 
 case_badFileArgs = do
     setUp
+    writeFile file3 "foo"
+    writeFile file3' "foo"
     expectStderr
-        ["a", "b", file1, file2]
+        ["a", "b", file1, file2, file3]
         2
         [ file1 ++ ": is a directory"
         , file2 ++ ": no such file"
+        , file3 ++ ": open in emacs"
         ]
   where file1 = testDataDir
         file2 = testFile "no_such_file"
+        file3 = testFile "open_in_emacs"
+        file3' = testFile ".#open_in_emacs"
 
 case_badBackref = do
     setUp
