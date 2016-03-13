@@ -105,9 +105,10 @@ diffFlags path =
     , "--"
     ]
     
--- | Runs the external diff tool over a pair of files.
-runDiff :: FilePath -> FilePath -> IO PatchData
-runDiff oldPath newPath = do
+-- | Runs the external diff tool over a pair of files.  Returns the
+-- output of diff.
+getDiffOutput :: FilePath -> FilePath -> IO PatchData
+getDiffOutput oldPath newPath = do
     (_, diffStdout, diffStderr) <-
         readProcessWithExitCode "diff" diffArgs diffInput
     unless (null diffStderr) $
@@ -117,14 +118,15 @@ runDiff oldPath newPath = do
     diffInput = ""
     diffArgs = diffFlags oldPath ++ [oldPath, newPath]
 
--- | Show the difference between old content and new.
-showDiff :: FilePath -> FileContent -> IO String
-showDiff path newContent = do
+-- Runs diff to show the differences between the old and new content
+-- to stdout.
+runDiff :: FilePath -> FileContent -> IO ()
+runDiff path newContent = do
     (_, diffStdout, diffStderr) <-
         readProcessWithExitCode "diff" diffArgs (L8.unpack newContent)
     unless (null diffStderr) $
         error ("diff wrote to stderr:\n" ++ diffStderr)
-    return diffStdout
+    putStr diffStdout
   where
     diffArgs = diffFlags path ++ [path, "-"]
 
@@ -156,7 +158,7 @@ updateFileContent patchPath path newContent =
     withSystemTempFile "gsub.tmp" $ \tempPath tempH -> do
         L8.hPut tempH newContent
         hClose tempH
-        patch <- runDiff path tempPath
+        patch <- getDiffOutput path tempPath
         appendFile patchPath patch
         copyFile tempPath path
 
@@ -165,7 +167,8 @@ updateFileContent patchPath path newContent =
 processSingleFile :: Plan -> FilePath -> IO Int
 processSingleFile plan path = do
     oldContent <- L8.readFile path
-    let (numChanges, newContent) = transformFileContent plan oldContent
+    let (numChanges, newContent) =
+            transformFileContent plan oldContent
     when (numChanges > 0) $
         case planMode plan of
         RunMode -> do
@@ -175,8 +178,7 @@ processSingleFile plan path = do
         DryRunMode ->
             printChanges numChanges
         DiffMode -> do
-            diff <- showDiff path newContent
-            putStr diff
+            runDiff path newContent
     return numChanges
   where
     patchPath = patchFilePath plan

@@ -95,6 +95,8 @@ expectStderr args exitCode stderrLines = do
     assertEqual "output on stdout" "" stdout'
     assertEqual "wrong exit code" (ExitFailure exitCode) exitCode'
 
+-- Check that, with no arguments, we return an error code and print a
+-- message to stderr.
 case_noArgs = do
     setUp
     (exitCode, stdout, stderr) <- run []
@@ -102,6 +104,8 @@ case_noArgs = do
     assertEqual "wrong stdout" "" stdout
     assertBool "empty stderr" ("" /= stderr)
 
+-- Check that various file-related error conditions are detected and
+-- cause execution to abort.
 case_badFileArgs = do
     setUp
     writeFile file3 "foo"
@@ -118,6 +122,7 @@ case_badFileArgs = do
         file3 = testFile "open_in_emacs"
         file3' = testFile ".#open_in_emacs"
 
+-- Check that invalid backreference numbers are detected.
 case_badBackref = do
     setUp
     expectStderr
@@ -125,6 +130,7 @@ case_badBackref = do
         1
         ["gsub: pattern has fewer than 1 groups"]
 
+-- Check a single replace in a single file.
 case_simpleReplace = do
     setUp
     writeTestFile "a" "foo\n"
@@ -135,6 +141,20 @@ case_simpleReplace = do
         ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "bar\n"
 
+-- Check a simple replace in multiple files, showing that changes are
+-- counted correctly.
+case_simpleReplaceMulti = do
+    setUp
+    writeTestFile "a" "foo\nfoo\n"
+    writeTestFile "b" "foo\n"
+    expectStdout
+        ["-p", testFile "p", "foo", "bar", testFile "a", testFile "b"]
+        [testFile "a" ++ ": 2 lines changed"
+        ,testFile "b" ++ ": 1 line changed"
+        ,"Changed 3 lines in 2 files"
+        ,"Diff saved in " ++ testFile "p"]
+
+-- Check that regex replacement works.
 case_regexReplace = do
     setUp
     writeTestFile "a" "foo\n"
@@ -145,6 +165,7 @@ case_regexReplace = do
         ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "fx\n"
 
+-- Check that backreference groups work.
 case_groupReplace = do
     setUp
     writeTestFile "a" "ax by cz\n"
@@ -155,6 +176,7 @@ case_groupReplace = do
         ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "ax:xa by:yb cz:zc\n"
 
+-- Check that diff mode works.
 case_simpleDiff = do
     setUp
     writeTestFile "a" "a\nb\nc\n"
@@ -169,6 +191,7 @@ case_simpleDiff = do
         , " c"]
     assertTestFile "a" "a\nb\nc\n"
 
+-- Check that dry run mode works.
 case_simpleDryRun = do
     setUp
     writeTestFile "a" "foo\n"
@@ -187,6 +210,7 @@ tests =
     , testCase "case_badFileArgs" case_badFileArgs
     , testCase "case_badBackref" case_badBackref
     , testCase "case_simpleReplace" case_simpleReplace
+    , testCase "case_simpleReplaceMulti" case_simpleReplaceMulti
     , testCase "case_regexReplace" case_regexReplace
     , testCase "case_groupReplace" case_groupReplace
     , testCase "case_simpleDiff" case_simpleDiff
