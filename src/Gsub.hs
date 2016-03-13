@@ -29,8 +29,8 @@ instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
 
 -- | Prints errors and if there are any, otherwise executes an action.
-exitIfErrors :: [FileError] -> IO ()
-exitIfErrors errors = do
+exitIfErrors :: Handle -> [FileError] -> IO ()
+exitIfErrors stderr errors = do
     unless (null errors) $ do
         mapM_ (hPrint stderr) errors
         exitWith (ExitFailure 2)
