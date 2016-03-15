@@ -85,9 +85,10 @@ countPatternSlots p = length $ L.elemIndices '#' p
 findPatchPath :: FilePath -> IO FilePath
 findPatchPath p = case countPatternSlots p of
     0 -> do
-        exists <- doesPathExist p
-        when exists $
-            error ("Patch file already exists: " ++ p)
+        when (p /= "/dev/null") $ do
+            exists <- doesPathExist p
+            when exists $
+                error ("Patch file already exists: " ++ p)
         return p
     1 -> loop (expandDiffPattern p)
     _ -> error ("Invalid patch file pattern: " ++ p)
@@ -97,7 +98,7 @@ findPatchPath p = case countPatternSlots p of
         if not exists
             then return p
             else loop ps
-        
+
 -- Produce an infinite list of candidate file paths corresponding to a
 -- pattern containing a single '#' character.
 expandDiffPattern :: FilePath -> [FilePath]
