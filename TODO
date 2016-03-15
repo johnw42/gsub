@@ -5,3 +5,8 @@ absence of a trailing newline should be preserved, but at the very
 least, files should not be changed just to add a trailing newline.
 
 Support case-insentive matching with and without regexes enabled.
+
+Implement smart case.
+
+Convert to use string types consistently--lazy byte strings for files,
+strict byte strings for lines.

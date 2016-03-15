@@ -1,3 +1,5 @@
+{-# Language OverlappingInstances #-}
+
 module FindReplace where
 
 import Control.Applicative
@@ -7,6 +9,7 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
 import Data.List
+import Data.String.Conversions
 import Numeric (readDec)
 import qualified Text.Regex.PCRE.Heavy as Heavy
 import qualified Text.Regex.PCRE.Light as Light
@@ -87,7 +90,7 @@ parseReplacement' s = loop 0 s
     cons part parts = liftM2 (:) (Right part) parts
     consLiteral s parts =
         liftM mergeLiterals (cons (LiteralPart s) parts)
-    
+
 -- Normalize a replacement sequence by combining adjacent LiteralParts.
 mergeLiterals :: [ReplacementPart] -> [ReplacementPart]
 mergeLiterals = loop
@@ -163,7 +166,19 @@ transformLineFixed ch needle rep line = loop line
         | isLower l = toUpper l == toUpper r
         | otherwise = l == r
 
+
 -- | Transforms a line using regex replacement.
 transformLineRegex :: Heavy.Regex -> Replacement -> FileContent -> FileContent
-transformLineRegex regex rep line =
-    Heavy.gsub regex (expand rep) line
+transformLineRegex regex rep line = loop 0 ranges
+  where
+    ranges = Heavy.scanRanges regex line
+    loop i [] = L8.drop (fromIntegral i) line
+    loop i (((mi,mj), subranges) : rs) =
+        L8.concat
+        [ substr line (i, mi)
+        , convertString $
+          expand rep (map (convertString . substr line) subranges)
+        , loop mj rs
+        ]
+    substr :: L8.ByteString -> (Int,Int) -> L8.ByteString
+    substr s (i,j) = L8.drop (fromIntegral i) $ L8.take (fromIntegral j) s

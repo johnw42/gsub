@@ -179,13 +179,13 @@ case_regexReplace = do
 -- Check that backreference groups work.
 case_groupReplace = do
     setUp
-    writeTestFile "a" "ax by cz\n"
+    writeTestFile "a" "1 ax by cz 2\n"
     expectStdout
         ["-p", testFile "p", "([a-c])([x-z])", "\\0:\\2\\1", testFile "a"]
         [testFile "a" ++ ": 1 line changed"
         ,"Changed 1 line in 1 file"
         ,"Diff saved in " ++ testFile "p"]
-    assertTestFile "a" "ax:xa by:yb cz:zc\n"
+    assertTestFile "a" "1 ax:xa by:yb cz:zc 2\n"
 
 -- Check that diff mode works.
 case_simpleDiff = do
