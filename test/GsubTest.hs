@@ -141,6 +141,17 @@ case_simpleReplace = do
         ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "bar\n"
 
+-- Check that the fixed-strings option works.
+case_fixedStrings = do
+    setUp
+    writeTestFile "a" "*\n"
+    expectStdout
+        ["-p", testFile "p", "-F", "*", "+", testFile "a"]
+        [testFile "a" ++ ": 1 line changed"
+        ,"Changed 1 line in 1 file"
+        ,"Diff saved in " ++ testFile "p"]
+    assertTestFile "a" "+\n"
+
 -- Check a simple replace in multiple files, showing that changes are
 -- counted correctly.
 case_simpleReplaceMulti = do
@@ -210,6 +221,7 @@ tests =
     , testCase "case_badFileArgs" case_badFileArgs
     , testCase "case_badBackref" case_badBackref
     , testCase "case_simpleReplace" case_simpleReplace
+    , testCase "case_fixedStrings" case_fixedStrings
     , testCase "case_simpleReplaceMulti" case_simpleReplaceMulti
     , testCase "case_regexReplace" case_regexReplace
     , testCase "case_groupReplace" case_groupReplace
