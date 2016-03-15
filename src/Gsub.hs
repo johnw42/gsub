@@ -66,7 +66,7 @@ testIsOpenInEmacs p = doesFileExist lockFile
   where
     lockFile = dirName </> ".#" ++ baseName
     (dirName, baseName) = splitFileName p
-    
+
 
 -- | Checks that all files in the plan can be operated upon.
 validateFiles :: Plan -> IO [FileError]
@@ -80,13 +80,22 @@ transformLine (TransformFixed ch needle rep) =
 transformLine (TransformRegex regex rep) =
     transformLineRegex regex rep
 
+-- Converts a file's content to a series of lines in a way that
+-- presenves the presence or absernce of a trailing newline.
+fileContentToLines :: FileContent -> [FileContent]
+fileContentToLines = L8.split '\n'
+
+-- Inverse of 'fileContentToLines'.
+linesToFileContent :: [FileContent] -> FileContent
+linesToFileContent = L8.intercalate (L8.pack "\n")
+
 -- | Applies the specified transformation to a whole file's content.
 -- Returns a pair of the modified content and the number of lines
 -- changed.
 transformFileContent :: Plan -> FileContent -> (Int, FileContent)
-transformFileContent plan content = (numChanges, L8.unlines lines')
+transformFileContent plan content = (numChanges, linesToFileContent lines')
   where
-    lines = L8.lines content
+    lines = fileContentToLines content
     (numChanges, lines') = mapAccumL step 0 lines
     step accum line = (accum', line')
       where
@@ -104,7 +113,7 @@ diffFlags path =
     , "--label=" ++ path
     , "--"
     ]
-    
+
 -- | Runs the external diff tool over a pair of files.  Returns the
 -- output of diff.
 getDiffOutput :: FilePath -> FilePath -> IO PatchData

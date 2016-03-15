@@ -141,6 +141,17 @@ case_simpleReplace = do
         ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "bar\n"
 
+-- Check that (lack of) a newline is preserved.
+case_noNewLine = do
+    setUp
+    writeTestFile "a" "foo"
+    expectStdout
+        ["-p", testFile "p", "foo", "bar", testFile "a"]
+        [testFile "a" ++ ": 1 line changed"
+        ,"Changed 1 line in 1 file"
+        ,"Diff saved in " ++ testFile "p"]
+    assertTestFile "a" "bar"
+
 -- Check that the fixed-strings option works.
 case_fixedStrings = do
     setUp
@@ -221,6 +232,7 @@ tests =
     , testCase "case_badFileArgs" case_badFileArgs
     , testCase "case_badBackref" case_badBackref
     , testCase "case_simpleReplace" case_simpleReplace
+    , testCase "case_noNewLine" case_noNewLine
     , testCase "case_fixedStrings" case_fixedStrings
     , testCase "case_simpleReplaceMulti" case_simpleReplaceMulti
     , testCase "case_regexReplace" case_regexReplace
