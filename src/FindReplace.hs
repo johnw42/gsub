@@ -2,6 +2,8 @@
 
 module FindReplace where
 
+import Types
+
 import Control.Applicative
 import Control.Exception
 import Control.Monad (liftM, liftM2)
@@ -13,8 +15,6 @@ import Data.String.Conversions
 import Numeric (readDec)
 import qualified Text.Regex.PCRE.Heavy as Heavy
 import qualified Text.Regex.PCRE.Light as Light
-
-type FileContent = L8.ByteString
 
 -- | How letter case should be handled.
 data CaseHandling
@@ -168,17 +168,18 @@ transformLineFixed ch needle rep line = loop line
 
 
 -- | Transforms a line using regex replacement.
-transformLineRegex :: Heavy.Regex -> Replacement -> FileContent -> FileContent
+transformLineRegex :: Heavy.Regex -> Replacement -> LineContent -> LineContent
 transformLineRegex regex rep line = loop 0 ranges
   where
     ranges = Heavy.scanRanges regex line
-    loop i [] = L8.drop (fromIntegral i) line
+    loop :: Int -> [((Int,Int),[(Int,Int)])] -> LineContent
+    loop i [] = B8.drop i line
     loop i (((mi,mj), subranges) : rs) =
-        L8.concat
+        B8.concat
         [ substr line (i, mi)
         , convertString $
           expand rep (map (convertString . substr line) subranges)
         , loop mj rs
         ]
-    substr :: L8.ByteString -> (Int,Int) -> L8.ByteString
-    substr s (i,j) = L8.drop (fromIntegral i) $ L8.take (fromIntegral j) s
+    substr :: LineContent -> (Int,Int) -> LineContent
+    substr s (i,j) = B8.drop i . B8.take j $ s

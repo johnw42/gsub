@@ -4,10 +4,12 @@ import DiffDB
 import FindReplace
 import Options
 import Plan
+import Types
 
 import Control.Applicative
 import Control.Exception
 import Control.Monad
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
 import Data.Either
@@ -74,20 +76,20 @@ validateFiles plan =
     fmap catMaybes $ mapM checkFile (filesToProcess plan)
 
 -- | Applies the specified transformation to a line of a file.
-transformLine :: Transformation -> FileContent -> FileContent
+transformLine :: Transformation -> LineContent -> LineContent
 transformLine (TransformFixed ch needle rep) =
-    L8.pack . transformLineFixed ch needle rep . L8.unpack
+    B8.pack . transformLineFixed ch needle rep . B8.unpack
 transformLine (TransformRegex regex rep) =
     transformLineRegex regex rep
 
 -- Converts a file's content to a series of lines in a way that
 -- presenves the presence or absernce of a trailing newline.
-fileContentToLines :: FileContent -> [FileContent]
-fileContentToLines = L8.split '\n'
+fileContentToLines :: FileContent -> [LineContent]
+fileContentToLines = map L8.toStrict . L8.split '\n'
 
 -- Inverse of 'fileContentToLines'.
-linesToFileContent :: [FileContent] -> FileContent
-linesToFileContent = L8.intercalate (L8.pack "\n")
+linesToFileContent :: [LineContent] -> FileContent
+linesToFileContent = L8.intercalate (L8.pack "\n") . map L8.fromStrict
 
 -- | Applies the specified transformation to a whole file's content.
 -- Returns a pair of the modified content and the number of lines

@@ -7,6 +7,7 @@ import PlanTest
 
 import Control.Exception
 import Control.Monad
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.IORef
 import Data.List (isInfixOf)
@@ -33,10 +34,10 @@ prop_transformLine plan before after =
   where pattern = patternString plan
         replacement = replacementString plan
         content = before ++ pattern ++ after
-        content' = L8.pack content
+        content' = B8.pack content
         xfrm = transformation plan
         result = transformLine xfrm content'
-        result' = L8.unpack result
+        result' = B8.unpack result
 
 prop_transformFileContent plan before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
