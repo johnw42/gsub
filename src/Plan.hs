@@ -13,11 +13,10 @@ import qualified Data.ByteString.Char8 as B8
 import System.FilePath ((</>))
 import Text.Printf (printf)
 
-import qualified Text.Regex.PCRE.Heavy as Heavy
-import qualified Text.Regex.PCRE.Light as Light
+import qualified Text.Regex.PCRE.Light as RE
 
 data Transformation
-    = TransformRegex Light.Regex Replacement
+    = TransformRegex RE.Regex Replacement
     | TransformFixed CaseHandling String String
 
 -- An execution plan.
@@ -61,7 +60,7 @@ makePlan' opts patchPath = do
         re <- reM
         rep <- repM
         let maxGroup = repMaxGroup rep
-        if maxGroup < Light.captureCount re
+        if maxGroup < RE.captureCount re
             then Right (TransformRegex re rep)
             else Left ("pattern has fewer than " ++
                        show maxGroup ++ " groups")

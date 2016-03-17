@@ -12,8 +12,6 @@ import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.HUnit
 import Test.QuickCheck
-import qualified Text.Regex.PCRE.Heavy as Heavy
-import qualified Text.Regex.PCRE.Light as Light
 
 instance Arbitrary CaseHandling where
     arbitrary = elements [IgnoreCase, ConsiderCase]

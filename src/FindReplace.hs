@@ -13,8 +13,8 @@ import Data.Char
 import Data.List
 import Data.String.Conversions
 import Numeric (readDec)
-import qualified Text.Regex.PCRE.Heavy as Heavy
-import qualified Text.Regex.PCRE.Light as Light
+import qualified Text.Regex.PCRE.Heavy as RE
+import qualified Text.Regex.PCRE.Light as RE
 
 -- | How letter case should be handled.
 data CaseHandling
@@ -113,11 +113,11 @@ expand' parts groups = concatMap expandGroup parts
     expandGroup (GroupPart n) = groups !! n
 
 -- | Compiles a regex.
-compileRegex :: Bool -> String -> Either String Heavy.Regex
-compileRegex ignoreCase pat = Heavy.compileM (B8.pack pat) pcreOpts
+compileRegex :: Bool -> String -> Either String RE.Regex
+compileRegex ignoreCase pat = RE.compileM (B8.pack pat) pcreOpts
   where
     pcreOpts = if ignoreCase
-               then [Light.caseless]
+               then [RE.caseless]
                else []
 
 -- | Transforms a regex pattern to match using 'SmartCase' semantics.
@@ -168,10 +168,10 @@ transformLineFixed ch needle rep line = loop line
 
 
 -- | Transforms a line using regex replacement.
-transformLineRegex :: Heavy.Regex -> Replacement -> LineContent -> LineContent
+transformLineRegex :: RE.Regex -> Replacement -> LineContent -> LineContent
 transformLineRegex regex rep line = loop 0 ranges
   where
-    ranges = Heavy.scanRanges regex line
+    ranges = RE.scanRanges regex line
     loop :: Int -> [((Int,Int),[(Int,Int)])] -> LineContent
     loop i [] = B8.drop i line
     loop i (((mi,mj), subranges) : rs) =

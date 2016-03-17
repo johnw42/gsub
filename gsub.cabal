@@ -46,6 +46,7 @@ library
                        Options
                        Plan
                        FindReplace
+                       Types
                        Utils
 
   -- Other library packages from which modules are imported.
@@ -57,11 +58,11 @@ library
                      , filepath >= 1.3.0.2
                      , mtl
                      , optparse-applicative
-                     , pcre-heavy >= 1.0
+                     , pcre-heavy >= 1.0.0.2
                      , pcre-light >= 0.4.0.3
                      , process >= 1.2.0.0
                      , random
-                     , string-conversions == 0.4
+                     , string-conversions >= 0.4
                      , text
                      , text-icu
                      , transformers
@@ -83,8 +84,6 @@ test-suite gsub-test
                      , directory >= 1.2.1.0
                      , filepath >= 1.3.0.2
                      , gsub
-                     , pcre-heavy >= 0.2.2
-                     , pcre-light >= 0.4.0.3
                      , process >= 1.2.0.0
                      , random
                      , silently >= 1.2.4.1
