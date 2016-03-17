@@ -45,13 +45,13 @@ prop_expand before after =
     testGroups = ["<group" ++ (show n) ++ ">" | n <- [0..]]
     inner n k =
         (label "The empty replacement works.")
-        (once $ expand' [] testGroups ==? "") .&&.
+        (once $ expand (Rep []) testGroups ==? "") .&&.
         (label "Valid groups are replaced.")
-        (expand' replacement testGroups ==? expected)
+        (expand replacement testGroups ==? expected)
       where
         n' = n + k
         expected = before ++ (testGroups !! n') ++ after
-        replacement = [LiteralPart before, GroupPart n', LiteralPart after]
+        replacement = Rep [LiteralPart before, GroupPart n', LiteralPart after]
 
 
 instance Arbitrary ReplacementPart where

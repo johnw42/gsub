@@ -102,11 +102,7 @@ mergeLiterals = loop
 
 -- Substitute values into a replacement.
 expand :: Replacement -> [String] -> String
-expand (Rep parts) groups =
-    expand' parts groups
-
-expand' :: [ReplacementPart] -> [String] -> String
-expand' parts groups = concatMap expandGroup parts
+expand (Rep parts) groups = concatMap expandGroup parts
   where
     expandGroup (LiteralPart s) = s
     expandGroup (GroupPart n) = groups !! n
