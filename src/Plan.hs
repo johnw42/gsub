@@ -3,6 +3,7 @@ module Plan where
 import Directory
 import FindReplace
 import Options
+import Types
 import Utils
 
 import Control.Applicative ((<$>))
@@ -33,9 +34,9 @@ replacementString = replacementStringOpt . options
 filesToProcess = filesOpt . options
 planMode = planModeOpt . options
 backupSuffix = backupSuffixOpt . options
-useFixedStrings = fixedStringsOpt . options
+replacementMode = replacementModeOpt . options
 keepGoing = keepGoingOpt . options
-ignoreCase = ignoreCaseOpt . options
+caseHandling = caseHandlingOpt . options
 
 makePlan :: Options -> IO Plan
 makePlan opts = do
@@ -50,12 +51,16 @@ makePlan opts = do
 -- | Converts options into an execution plan.
 makePlan' :: Options -> Maybe FilePath -> Either String Plan
 makePlan' opts patchPath = do
-    xfrm <- if fixedStringsOpt opts
-            then Right fixed
-            else checkRegex compileRegexM regexReplacementM
-    return (Plan opts xfrm patchPath)
+    xfrm <- case replacementModeOpt opts of
+        FixedMode -> Right fixed
+        RegexMode -> checkRegex compileRegexM regexReplacementM
+    return $ Plan opts xfrm patchPath
   where
-    fixed = TransformFixed caseHandling fixedPattern fixedReplacement
+    fixed =
+        TransformFixed
+        (caseHandlingOpt opts)
+        fixedPattern
+        fixedReplacement
     checkRegex reM repM = do
         re <- reM
         rep <- repM
@@ -64,14 +69,11 @@ makePlan' opts patchPath = do
             then Right (TransformRegex re rep)
             else Left ("pattern has fewer than " ++
                        show maxGroup ++ " groups")
-    caseHandling = if ignoreCaseOpt opts
-                   then IgnoreCase
-                   else ConsiderCase
     fixedPattern = patternStringOpt opts
     fixedReplacement = replacementStringOpt opts
     regexReplacementM = parseReplacement (replacementStringOpt opts)
-    pattern = "(" ++ patternStringOpt opts ++ ")"
-    compileRegexM = compileRegex (ignoreCaseOpt opts) pattern
+    compileRegexM =
+        compileRegex (caseHandlingOpt opts) (patternStringOpt opts)
 
 -- Count the number of '#' characters in a file path.
 countPatternSlots :: FilePath -> Int

@@ -16,13 +16,6 @@ import Numeric (readDec)
 import qualified Text.Regex.PCRE.Heavy as RE
 import qualified Text.Regex.PCRE.Light as RE
 
--- | How letter case should be handled.
-data CaseHandling
-    = IgnoreCase
-    | ConsiderCase
-    | SmartCase
-    deriving Show
-
 -- | Ways to transform a replacement string.
 data ReplacementCase
     = ReplaceUpper
@@ -108,12 +101,15 @@ expand (Rep parts) groups = concatMap expandGroup parts
     expandGroup (GroupPart n) = groups !! n
 
 -- | Compiles a regex.
-compileRegex :: Bool -> String -> Either String RE.Regex
-compileRegex ignoreCase pat = RE.compileM (B8.pack pat) pcreOpts
+compileRegex :: CaseHandling -> String -> Either Error RE.Regex
+compileRegex caseHandling pat =
+    case caseHandling of
+        ConsiderCase -> RE.compileM pat' []
+        IgnoreCase -> RE.compileM pat' [RE.caseless]
+        SmartCase ->
+            Left "smart case not supported with regex replacement"
   where
-    pcreOpts = if ignoreCase
-               then [RE.caseless]
-               else []
+    pat' = B8.pack $ "(" ++ pat ++ ")"
 
 -- | Transforms a regex pattern to match using 'SmartCase' semantics.
 smartCaseRegex :: String -> Either String String

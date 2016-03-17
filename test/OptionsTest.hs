@@ -2,6 +2,7 @@ module OptionsTest where
 
 import Options
 import TestUtils
+import Types
 
 import Control.Applicative
 import Control.Monad
@@ -15,16 +16,16 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 
 instance Arbitrary Options where
-    arbitrary = Options 
+    arbitrary = Options
         <$> fmap fromAlpha arbitrary
         <*> fmap fromAlpha arbitrary
         <*> arbitrary -- filesOpt
         <*> elements [RunMode, DryRunMode, DiffMode]
         <*> arbitrary -- backupSuffixOpt
-        <*> arbitrary -- fixedStringsOpt
+        <*> elements [FixedMode, RegexMode]
         <*> arbitrary -- patchFilePathOpt
         <*> arbitrary -- keepGoingOpt
-        <*> arbitrary -- ignoreCaseOpt
+        <*> elements [ConsiderCase, IgnoreCase]
     shrink opts = do
         files <- shrink (filesOpt opts)
         bs <- shrink (backupSuffixOpt opts)
@@ -115,7 +116,7 @@ arbFullArgList' = do
     flags <- arbFlagList
     args <- posArgs `withFlags` flags
     return (FullArgList posArgs flags args)
-    
+
 -- Test with too few arguments.
 prop_parseArgs_notEnough name =
   forAll (resize 2 (listOf arbPosArg)) $ \posArgs ->

@@ -2,6 +2,7 @@ module FindReplaceTest (tests) where
 
 import FindReplace
 import TestUtils
+import Types
 
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
@@ -15,6 +16,14 @@ import Test.QuickCheck
 
 instance Arbitrary CaseHandling where
     arbitrary = elements [IgnoreCase, ConsiderCase]
+
+instance Arbitrary ReplacementPart where
+    arbitrary = sized $ \size -> do
+        s <- arbitrary
+        n <- choose (1, size)
+        elements [LiteralPart s, GroupPart n, LiteralPart "\\"]
+    shrink (LiteralPart s) = map LiteralPart (shrink s)
+    shrink (GroupPart n) = map GroupPart [n-1, n-2 .. 0]
 
 prop_mergeLiterals1 :: ReplacementPart
                     -> ReplacementPart
@@ -54,15 +63,6 @@ prop_expand before after =
         n' = n + k
         expected = before ++ (testGroups !! n') ++ after
         replacement = Rep [LiteralPart before, GroupPart n', LiteralPart after]
-
-
-instance Arbitrary ReplacementPart where
-    arbitrary = sized $ \size -> do
-        s <- arbitrary
-        n <- choose (1, size)
-        elements [LiteralPart s, GroupPart n, LiteralPart "\\"]
-    shrink (LiteralPart s) = map LiteralPart (shrink s)
-    shrink (GroupPart n) = map GroupPart [n-1, n-2 .. 0]
 
 -- Convert a replacement sequence into a parseable representation.
 showReplacement :: [ReplacementPart] -> String
@@ -137,7 +137,7 @@ prop_transformLineRegex (Alpha patStr) (Alpha repStr) before after =
   where
     content = before ++ patStr ++ after
     result = B8.unpack $ transformLineRegex regex rep $ B8.pack content
-    Right regex = compileRegex False patStr
+    Right regex = compileRegex ConsiderCase patStr
     rep = literalReplacement repStr
 
 tests =

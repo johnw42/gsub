@@ -1,17 +1,10 @@
 module Options where
 
+import Types
 import Utils
 
 import Data.Maybe (isJust, fromJust)
 import Options.Applicative ((<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure, flag, flag', getParseResult, help, helper, idm, info, internal, long, many, metavar, optional, prefs, pure, short, some, strArgument, strOption, switch, value)
-
-type Error = String
-
-data PlanMode
-    = RunMode
-    | DryRunMode
-    | DiffMode
-    deriving (Eq, Show)
 
 -- Command-line options.
 data Options
@@ -21,10 +14,10 @@ data Options
       , filesOpt :: [FilePath]
       , planModeOpt :: PlanMode
       , backupSuffixOpt :: Maybe String
-      , fixedStringsOpt :: Bool
+      , replacementModeOpt :: ReplacementMode
       , patchFilePathOpt :: FilePath
       , keepGoingOpt :: Bool
-      , ignoreCaseOpt :: Bool
+      , caseHandlingOpt :: CaseHandling
       } deriving (Eq, Show)
 
 -- See https://github.com/pcapriotti/optparse-applicative/blob/master/README.md
@@ -57,10 +50,12 @@ parser =
          long "backup-suffix" <>
          metavar "<suffix>" <>
          help "Create backup file by appending suffix (like perl -i).")
-    <*> (switch $
-         short 'F' <>
-         long "fixed-strings" <>
-         help "Treat <pattern> and <replacement> as literal strings (like grep -F).")
+    <*> (pure RegexMode
+         <|>
+         (flag' FixedMode $
+          short 'F' <>
+          long "fixed-strings" <>
+          help "Treat <pattern> and <replacement> as literal strings (like grep -F)."))
     <*> (strOption $
          short 'p' <>
          long "patch-file" <>
@@ -72,11 +67,13 @@ parser =
          short 'k' <>
          long "keep-going" <>
          help "Don't stop after encountering errors.")
-    <*> (switch $
-         short 'i' <>
-         long "ignore-case" <>
-         help "Ignore case when matching.")
-         
+    <*> (pure ConsiderCase
+         <|>
+         (flag' IgnoreCase $
+          short 'i' <>
+          long "ignore-case" <>
+          help "Ignore case when matching."))
+
 
 execParseArgs :: IO Options
 execParseArgs = execParser (info (helper <*> parser) idm)
