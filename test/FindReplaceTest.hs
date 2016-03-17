@@ -78,14 +78,14 @@ showReplacement = concatMap showPart . tails
 prop_parseReplacement r =
     let r' = mergeLiterals r
         shown = showReplacement r'
-        parsed = parseReplacement' shown
+        parsed = parseReplacement shown
     in printTestCase ("r'     " ++ show r') $
        printTestCase ("shown  " ++ show shown) $
        printTestCase ("parsed " ++ show parsed) $
-       parsed == Right r'
+       parsed == Right (Rep r')
 
 case_parseReplacement0 =
-    parseReplacement' "\\0.1" @?= Right [GroupPart 0, LiteralPart ".1"]
+    parseReplacement "\\0.1" @?= Right (Rep [GroupPart 0, LiteralPart ".1"])
 
 prop_transformLineFixed1 ch pattern replacement before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>

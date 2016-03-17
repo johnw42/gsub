@@ -30,7 +30,9 @@ data ReplacementCase
     | ReplaceOriginal
 
 -- | Data structure representing how to replace a regex match.
-data Replacement = Rep { repParts :: [ReplacementPart] }
+newtype Replacement =
+    Rep { repParts :: [ReplacementPart] }
+    deriving (Show, Eq)
 data ReplacementPart
     = LiteralPart String  -- ^ Insert a literal value.
     | GroupPart Int       -- ^ Insert the text of a match group.
@@ -71,10 +73,7 @@ literalReplacement s = Rep [LiteralPart s]
 --   \& -> The empty string.
 --   \\ -> A literal backslash.
 parseReplacement :: String -> Either String Replacement
-parseReplacement = liftM Rep . parseReplacement'
-
-parseReplacement' :: String -> Either String [ReplacementPart]
-parseReplacement' s = loop 0 s
+parseReplacement s = liftM Rep $ loop 0 s
   where
     loop _ "" = Right []
     loop offset "\\" =
