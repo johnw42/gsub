@@ -16,6 +16,9 @@ import Test.QuickCheck
 instance Arbitrary CaseHandling where
     arbitrary = elements [IgnoreCase, ConsiderCase]
 
+prop_mergeLiterals1 :: ReplacementPart
+                    -> ReplacementPart
+                    -> Property
 prop_mergeLiterals1 pa pb =
     merged ==? case parts of
         [LiteralPart "", LiteralPart ""] -> []
@@ -23,30 +26,29 @@ prop_mergeLiterals1 pa pb =
         [other, LiteralPart ""] -> [other]
         [LiteralPart a, LiteralPart b] -> [LiteralPart (a ++ b)]
         _ -> parts
-    where
-        parts = [pa, pb]
-        merged = mergeLiterals parts
+  where
+    parts = [pa, pb]
+    merged = mergeLiterals parts
 
+prop_mergeLiterals2 :: [ReplacementPart] -> Bool
 prop_mergeLiterals2 parts =
     all check (tails (mergeLiterals parts))
-    where
-        check [] = True
-        check [LiteralPart ""] = False
-        check [_] = True
-        check (a:b:_) = not (isLiteral a && isLiteral b)
-        isLiteral (LiteralPart _) = True
-        isLiteral _ = False
+  where
+    check (LiteralPart "" : _) = False
+    check (LiteralPart _ : LiteralPart _ : _) = False
+    check _ = True
 
+prop_expand :: String -> String -> Property
 prop_expand before after =
-  (forAll (sized $ \size -> choose (0, size)) $ \n ->
-    (forAll (sized $ \size -> choose (1, size)) $ \k ->
-      inner n k))
+    forAll (sized $ \size -> choose (0, size)) $ \n ->
+    forAll (sized $ \size -> choose (1, size)) $ \k ->
+    inner n k
   where
     testGroups = ["<group" ++ (show n) ++ ">" | n <- [0..]]
     inner n k =
-        (label "The empty replacement works.")
+        label "The empty replacement works."
         (once $ expand (Rep []) testGroups ==? "") .&&.
-        (label "Valid groups are replaced.")
+        label "Valid groups are replaced."
         (expand replacement testGroups ==? expected)
       where
         n' = n + k
@@ -63,18 +65,20 @@ instance Arbitrary ReplacementPart where
     shrink (GroupPart n) = map GroupPart [n-1, n-2 .. 0]
 
 -- Convert a replacement sequence into a parseable representation.
+showReplacement :: [ReplacementPart] -> String
 showReplacement = concatMap showPart . tails
-    where
-        showPart [] = ""
-        showPart (LiteralPart s : _) = showLiteral s
-        showPart (GroupPart n : after) = "\\" ++ show n ++ maybeAmp after
-        maybeAmp (LiteralPart (digit : _) : _)
-            | isDigit digit = "\\&"
-        maybeAmp _ = ""
-        showLiteral = concatMap showLiteralChar
-        showLiteralChar '\\' = "\\\\"
-        showLiteralChar c = [c]
+  where
+    showPart [] = ""
+    showPart (LiteralPart s : _) = showLiteral s
+    showPart (GroupPart n : after) = "\\" ++ show n ++ maybeAmp after
+    maybeAmp (LiteralPart (digit : _) : _)
+        | isDigit digit = "\\&"
+    maybeAmp _ = ""
+    showLiteral = concatMap showLiteralChar
+    showLiteralChar '\\' = "\\\\"
+    showLiteralChar c = [c]
 
+prop_parseReplacement :: [ReplacementPart] -> Property
 prop_parseReplacement r =
     let r' = mergeLiterals r
         shown = showReplacement r'
@@ -87,6 +91,12 @@ prop_parseReplacement r =
 case_parseReplacement0 =
     parseReplacement "\\0.1" @?= Right (Rep [GroupPart 0, LiteralPart ".1"])
 
+prop_transformLineFixed1 :: CaseHandling
+                         -> String
+                         -> String
+                         -> String
+                         -> String
+                         -> Property
 prop_transformLineFixed1 ch pattern replacement before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
@@ -97,6 +107,11 @@ prop_transformLineFixed1 ch pattern replacement before after =
     content = before ++ pattern ++ after
     result = transformLineFixed ch pattern replacement content
 
+prop_transformLineFixed2 :: String
+                         -> String
+                         -> String
+                         -> String
+                         -> Property
 prop_transformLineFixed2 pattern replacement before after =
     not (u pattern `isInfixOf` (u $ replacement ++ after)) ==>
     not (u pattern `isInfixOf` (u $ before ++ replacement)) ==>
@@ -108,12 +123,11 @@ prop_transformLineFixed2 pattern replacement before after =
     u = map toUpper
     result = transformLineFixed IgnoreCase (u pattern) replacement content
 
-prop_transformLineRegex
-    :: AlphaString
-    -> AlphaString
-    -> String
-    -> String
-    -> Property
+prop_transformLineRegex :: AlphaString
+                        -> AlphaString
+                        -> String
+                        -> String
+                        -> Property
 prop_transformLineRegex (Alpha patStr) (Alpha repStr) before after =
     not (patStr `isInfixOf` (repStr ++ after)) ==>
     not (patStr `isInfixOf` (before ++ repStr)) ==>

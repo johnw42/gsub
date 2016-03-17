@@ -11,7 +11,7 @@ import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
 import Data.Char
 import Data.List
-import Data.String.Conversions
+import Data.String.Conversions (cs)
 import Numeric (readDec)
 import qualified Text.Regex.PCRE.Heavy as RE
 import qualified Text.Regex.PCRE.Light as RE
@@ -163,18 +163,23 @@ transformLineFixed ch needle rep line = loop line
 
 
 -- | Transforms a line using regex replacement.
-transformLineRegex :: RE.Regex -> Replacement -> LineContent -> LineContent
-transformLineRegex regex rep line = loop 0 ranges
-  where
-    ranges = RE.scanRanges regex line
-    loop :: Int -> [((Int,Int),[(Int,Int)])] -> LineContent
-    loop i [] = B8.drop i line
-    loop i (((mi,mj), subranges) : rs) =
-        B8.concat
-        [ substr line (i, mi)
-        , convertString $
-          expand rep (map (convertString . substr line) subranges)
-        , loop mj rs
-        ]
-    substr :: LineContent -> (Int,Int) -> LineContent
-    substr s (i,j) = B8.drop i . B8.take j $ s
+transformLineRegex :: RE.Regex
+                   -> Replacement
+                   -> LineContent
+                   -> LineContent
+transformLineRegex regex rep = RE.gsub regex (expand rep)
+
+-- -- Alternate version not using gsub:
+-- transformLineRegex regex rep line = loop 0 ranges
+--   where
+--     ranges = RE.scanRanges regex line
+--     loop :: Int -> [((Int,Int),[(Int,Int)])] -> LineContent
+--     loop i [] = B8.drop i line
+--     loop i (((mi,mj), subranges) : rs) =
+--         B8.concat
+--         [ substr line (i, mi)
+--         , cs $ expand rep (map (cs . substr line) subranges)
+--         , loop mj rs
+--         ]
+--     substr :: LineContent -> (Int,Int) -> LineContent
+--     substr s (i,j) = B8.drop i . B8.take j $ s

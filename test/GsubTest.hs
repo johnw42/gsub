@@ -16,7 +16,7 @@ import System.Environment
 import System.Exit
 import System.FilePath
 import System.IO
-import System.IO.Silently
+import System.IO.Silently (hCapture)
 import Test.Framework (testGroup)
 import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
