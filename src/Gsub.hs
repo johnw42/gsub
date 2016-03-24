@@ -64,9 +64,10 @@ checkFile path = loop checks
 
 -- Test whether a file appears to be open in emacs.
 testIsOpenInEmacs :: FilePath -> IO Bool
-testIsOpenInEmacs p = doesFileExist lockFile
+testIsOpenInEmacs p = do
+    entries <- getDirectoryContents dirName
+    return $ ".#" ++ baseName `elem` entries
   where
-    lockFile = dirName </> ".#" ++ baseName
     (dirName, baseName) = splitFileName p
 
 
@@ -229,14 +230,16 @@ printSummary plan (filesChanged, linesChanged) =
         putStrLn ("Changed " ++
                   showLineCount linesChanged ++ " in " ++
                   showFileCount filesChanged)
-        putStrLn ("Diff saved in " ++
-                  fromJust (patchFilePath plan))
+        when (filesChanged > 0) $
+            putStrLn ("Diff saved in " ++
+                      fromJust (patchFilePath plan))
     DryRunMode -> do
         putStrLn ("Would have changed " ++
                   showLineCount linesChanged ++ " in " ++
                   showFileCount filesChanged)
-        putStrLn ("Diff would have been saved in " ++
-                  fromJust (patchFilePath plan))
+        when (filesChanged > 0) $
+            putStrLn ("Diff would have been saved in " ++
+                      fromJust (patchFilePath plan))
     DiffMode -> return ()
 
 main :: IO ()

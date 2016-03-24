@@ -1,6 +1,5 @@
 module Plan where
 
-import Directory
 import FindReplace
 import Options
 import Types
@@ -12,6 +11,7 @@ import Control.Monad (liftM, liftM2, when)
 import qualified Data.List as L
 import qualified Data.ByteString.Char8 as B8
 import System.FilePath ((</>))
+import System.Posix.Files
 import Text.Printf (printf)
 
 import qualified Text.Regex.PCRE.Light as RE
@@ -87,7 +87,7 @@ findPatchPath :: FilePath -> IO FilePath
 findPatchPath p = case countPatternSlots p of
     0 -> do
         when (p /= "/dev/null") $ do
-            exists <- doesPathExist p
+            exists <- fileExist p
             when exists $
                 error ("Patch file already exists: " ++ p)
         return p
@@ -95,7 +95,7 @@ findPatchPath p = case countPatternSlots p of
     _ -> error ("Invalid patch file pattern: " ++ p)
   where
     loop (p:ps) = do
-        exists <- doesPathExist p
+        exists <- fileExist p
         if not exists
             then return p
             else loop ps
