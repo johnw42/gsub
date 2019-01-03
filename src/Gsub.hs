@@ -6,32 +6,39 @@ import Options
 import Plan
 import Types
 
-import Control.Applicative
-import Control.Exception
-import Control.Monad
+import           Control.Applicative
+import           Control.Exception
+import           Control.Monad
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
-import Data.Char
-import Data.Either
-import Data.IORef
-import Data.List (isPrefixOf, mapAccumL)
-import Data.Maybe (catMaybes, fromJust, isJust)
-import Data.Monoid (First(..), mconcat)
-import System.Directory
-import System.Environment
-import System.Exit
-import System.FilePath
-import System.IO
-import System.Process
+import           Data.Char
+import           Data.Either
+import           Data.IORef
+import           Data.List (init, isPrefixOf, mapAccumL, tails)
+import           Data.Maybe (catMaybes, fromJust, isJust)
+import           Data.Monoid (First (..), mconcat)
+import           System.Directory
+import           System.Environment
+import           System.Exit
+import           System.FilePath
+import           System.IO
+import           System.Process
+import qualified Text.Regex.PCRE.Heavy as RE
+import qualified Text.Regex.PCRE.Light as RE
 
 type PatchData = String
 
 data FileError = FileError FilePath Error
 
+data LineWithContext = LWC
+                       LineContent   -- ^ The line itself.
+                       [LineContent] -- ^ Lines before this line.
+                       [LineContent] -- ^ Lines after this line.
+
 instance Show FileError where
     show (FileError path error) = path ++ ": " ++ error
 
--- | Prints errors and if there are any, otherwise executes an action.
+-- | Prints errors if there are any, otherwise executes an action.
 exitIfErrors :: [FileError] -> IO ()
 exitIfErrors errors = do
     unless (null errors) $ do
@@ -76,6 +83,22 @@ validateFiles :: Plan -> IO [FileError]
 validateFiles plan =
     fmap catMaybes $ mapM checkFile (filesToProcess plan)
 
+maybeTransformLine :: Plan -> LineWithContext -> LineContent
+maybeTransformLine plan lwc@(LWC line linesBefore linesAfter) =
+    if contextOk
+        then transformLine trans line
+        else line
+  where
+    trans = transformation plan
+    pats = contextPatterns plan
+    relevantContext =
+        [line]
+        ++ take (contextBefore plan) linesBefore
+        ++ take (contextAfter plan) linesAfter
+    contextOk
+        | null pats = True
+        | otherwise = any (\pat -> any (RE.=~ pat) relevantContext) pats
+
 -- | Applies the specified transformation to a line of a file.
 transformLine :: Transformation -> LineContent -> LineContent
 transformLine (TransformFixed ch needle rep) =
@@ -83,8 +106,8 @@ transformLine (TransformFixed ch needle rep) =
 transformLine (TransformRegex regex rep) =
     transformLineRegex regex rep
 
--- Converts a file's content to a series of lines in a way that
--- presenves the presence or absernce of a trailing newline.
+-- Converts a file's content to a series of lines in a way that preserves the
+-- presence or absence of a trailing newline.
 fileContentToLines :: FileContent -> [LineContent]
 fileContentToLines = map L8.toStrict . L8.split '\n'
 
@@ -92,21 +115,26 @@ fileContentToLines = map L8.toStrict . L8.split '\n'
 linesToFileContent :: [LineContent] -> FileContent
 linesToFileContent = L8.intercalate (L8.pack "\n") . map L8.fromStrict
 
+-- Attach context to each line.
+addLineContext :: [LineContent] -> [LineWithContext]
+addLineContext lines = snd $ mapAccumL step [] $ init $ tails lines
+  where
+    step before (line:after) = (line:before, LWC line before after)
+
 -- | Applies the specified transformation to a whole file's content.
 -- Returns a pair of the modified content and the number of lines
 -- changed.
 transformFileContent :: Plan -> FileContent -> (Int, FileContent)
 transformFileContent plan content = (numChanges, linesToFileContent lines')
   where
-    lines = fileContentToLines content
-    (numChanges, lines') = mapAccumL step 0 lines
-    step accum line = (accum', line')
+    lwcs = addLineContext $ fileContentToLines content
+    (numChanges, lines') = mapAccumL step 0 lwcs
+    step accum lwc@(LWC line _ _) = (accum', line')
       where
-        line' = transform line
+        line' = maybeTransformLine plan lwc
         accum'
             | line' == line = accum
             | otherwise     = 1 + accum
-    transform = transformLine (transformation plan)
 
 -- | Finds the flags that should be passed to @diff@.
 diffFlags :: FilePath -> [String]

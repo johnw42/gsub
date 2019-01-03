@@ -1,5 +1,3 @@
-{-# Language OverlappingInstances #-}
-
 module FindReplace where
 
 import Types

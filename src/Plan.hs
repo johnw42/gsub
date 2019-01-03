@@ -5,14 +5,14 @@ import Options
 import Types
 import Utils
 
-import Control.Applicative ((<$>))
-import Control.Exception (assert)
-import Control.Monad (liftM, liftM2, when)
-import qualified Data.List as L
+import           Control.Applicative ((<$>))
+import           Control.Exception (assert)
+import           Control.Monad (liftM, liftM2, msum, when)
 import qualified Data.ByteString.Char8 as B8
-import System.FilePath ((</>))
-import System.Posix.Files
-import Text.Printf (printf)
+import qualified Data.List as L
+import           System.FilePath ((</>))
+import           System.Posix.Files
+import           Text.Printf (printf)
 
 import qualified Text.Regex.PCRE.Light as RE
 
@@ -23,13 +23,14 @@ data Transformation
 -- An execution plan.
 data Plan
     = Plan
-      { options :: Options
-      , transformation :: Transformation
-      , patchFilePath :: Maybe FilePath
+      { options         :: Options
+      , transformation  :: Transformation
+      , contextPatterns :: [RE.Regex]
+      , patchFilePath   :: Maybe FilePath
       }
 
 -- A facade for options.
-patternString = patternStringOpt . options
+patternString = toReplaceStringOpt . options
 replacementString = replacementStringOpt . options
 filesToProcess = filesOpt . options
 planMode = planModeOpt . options
@@ -37,15 +38,18 @@ backupSuffix = backupSuffixOpt . options
 replacementMode = replacementModeOpt . options
 keepGoing = keepGoingOpt . options
 caseHandling = caseHandlingOpt . options
+contextStrings = contextStringsOpt . options
+contextBefore = contextBeforeOpt . options
+contextAfter = contextAfterOpt . options
 
 makePlan :: Options -> IO Plan
 makePlan opts = do
     patchPath <-
         case planModeOpt opts of
         DiffMode -> return Nothing
-        _ -> Just <$> findPatchPath (patchFilePathOpt opts)
+        _        -> Just <$> findPatchPath (patchFilePathOpt opts)
     case makePlan' opts patchPath of
-        Left e -> error e
+        Left e     -> error e
         Right plan -> return plan
 
 -- | Converts options into an execution plan.
@@ -53,27 +57,34 @@ makePlan' :: Options -> Maybe FilePath -> Either String Plan
 makePlan' opts patchPath = do
     xfrm <- case replacementModeOpt opts of
         FixedMode -> Right fixed
-        RegexMode -> checkRegex compileRegexM regexReplacementM
-    return $ Plan opts xfrm patchPath
+        RegexMode -> checkRegexM compileRegexM regexReplacementM
+    ctx <- mapM (compileRegex caseHandling) (contextStringsOpt opts)
+    return $ Plan opts xfrm ctx patchPath
   where
     fixed =
         TransformFixed
         (caseHandlingOpt opts)
         fixedPattern
         fixedReplacement
-    checkRegex reM repM = do
-        re <- reM
-        rep <- repM
-        let maxGroup = repMaxGroup rep
-        if maxGroup < RE.captureCount re
-            then Right (TransformRegex re rep)
-            else Left ("pattern has fewer than " ++
-                       show maxGroup ++ " groups")
-    fixedPattern = patternStringOpt opts
+    fixedPattern = toReplaceStringOpt opts
     fixedReplacement = replacementStringOpt opts
     regexReplacementM = parseReplacement (replacementStringOpt opts)
+    caseHandling = caseHandlingOpt opts
     compileRegexM =
-        compileRegex (caseHandlingOpt opts) (patternStringOpt opts)
+        compileRegex caseHandling (toReplaceStringOpt opts)
+
+-- | Check that a regex and replacement string are compatible.
+checkRegexM :: Either String RE.Regex
+            -> Either String Replacement
+            -> Either String Transformation
+checkRegexM reM repM = do
+    re <- reM
+    rep <- repM
+    let maxGroup = repMaxGroup rep
+    if maxGroup < RE.captureCount re
+        then Right (TransformRegex re rep)
+        else Left ("pattern has fewer than " ++
+                   show maxGroup ++ " groups")
 
 -- Count the number of '#' characters in a file path.
 countPatternSlots :: FilePath -> Int

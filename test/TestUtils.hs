@@ -15,4 +15,4 @@ instance Arbitrary AlphaString where
 infix 5 ==?
 (==?) :: (Eq a, Show a) => a -> a -> Property
 a ==? b =
-    printTestCase ("expecting " ++ show b ++ ", got " ++ show a) (a == b)
+    counterexample ("expecting " ++ show b ++ ", got " ++ show a) (a == b)

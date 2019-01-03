@@ -3,21 +3,30 @@ module Options where
 import Types
 import Utils
 
-import Data.Maybe (isJust, fromJust)
-import Options.Applicative ((<>), (<$>), (<*>), (<|>), Parser, ParserResult(Success, Failure), execParser, execParserPure, flag, flag', getParseResult, help, helper, idm, info, internal, long, many, metavar, optional, prefs, pure, short, some, strArgument, strOption, switch, value)
+import Data.Maybe (fromJust, isJust)
+import Data.Monoid ((<>))
+import Options.Applicative (Parser, ParserResult (Failure, Success), auto,
+                            execParser, execParserPure, flag, flag',
+                            getParseResult, help, helper, idm, info, internal,
+                            long, many, metavar, option, optional, prefs, pure,
+                            short, some, strArgument, strOption, switch, value,
+                            (<$>), (<*>), (<|>))
 
 -- Command-line options.
 data Options
     = Options
-      { patternStringOpt :: String
+      { toReplaceStringOpt   :: String
       , replacementStringOpt :: String
-      , filesOpt :: [FilePath]
-      , planModeOpt :: PlanMode
-      , backupSuffixOpt :: Maybe String
-      , replacementModeOpt :: ReplacementMode
-      , patchFilePathOpt :: FilePath
-      , keepGoingOpt :: Bool
-      , caseHandlingOpt :: CaseHandling
+      , filesOpt             :: [FilePath]
+      , planModeOpt          :: PlanMode
+      , backupSuffixOpt      :: Maybe String
+      , replacementModeOpt   :: ReplacementMode
+      , patchFilePathOpt     :: FilePath
+      , keepGoingOpt         :: Bool
+      , caseHandlingOpt      :: CaseHandling
+      , contextStringsOpt    :: [String]
+      , contextBeforeOpt     :: Int
+      , contextAfterOpt      :: Int
       } deriving (Eq, Show)
 
 -- See https://github.com/pcapriotti/optparse-applicative/blob/master/README.md
@@ -73,6 +82,20 @@ parser =
           short 'i' <>
           long "ignore-case" <>
           help "Ignore case when matching."))
+    <*> (
+         (many $ strOption $
+          short 'c' <>
+          long "context"))
+    <*> (pure 0
+         <|>
+         (option auto $
+          short 'B' <>
+          long "before-context"))
+    <*> (pure 0
+         <|>
+         (option auto $
+          short 'A' <>
+          long "after-context"))
 
 
 execParseArgs :: IO Options

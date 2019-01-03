@@ -83,9 +83,9 @@ prop_parseReplacement r =
     let r' = mergeLiterals r
         shown = showReplacement r'
         parsed = parseReplacement shown
-    in printTestCase ("r'     " ++ show r') $
-       printTestCase ("shown  " ++ show shown) $
-       printTestCase ("parsed " ++ show parsed) $
+    in counterexample ("r'     " ++ show r') $
+       counterexample ("shown  " ++ show shown) $
+       counterexample ("parsed " ++ show parsed) $
        parsed == Right (Rep r')
 
 case_parseReplacement0 =
@@ -100,7 +100,7 @@ prop_transformLineFixed1 :: CaseHandling
 prop_transformLineFixed1 ch pattern replacement before after =
     not (pattern `isInfixOf` (replacement ++ after)) ==>
     not (pattern `isInfixOf` (before ++ replacement)) ==>
-    printTestCase (show result) $
+    counterexample (show result) $
         replacement `isInfixOf` result &&
         not (pattern `isInfixOf` result)
   where
@@ -115,7 +115,7 @@ prop_transformLineFixed2 :: String
 prop_transformLineFixed2 pattern replacement before after =
     not (u pattern `isInfixOf` (u $ replacement ++ after)) ==>
     not (u pattern `isInfixOf` (u $ before ++ replacement)) ==>
-    printTestCase (show result) $
+    counterexample (show result) $
         replacement `isInfixOf` result &&
         not (pattern `isInfixOf` result)
   where
@@ -131,7 +131,7 @@ prop_transformLineRegex :: AlphaString
 prop_transformLineRegex (Alpha patStr) (Alpha repStr) before after =
     not (patStr `isInfixOf` (repStr ++ after)) ==>
     not (patStr `isInfixOf` (before ++ repStr)) ==>
-    printTestCase (show result) $
+    counterexample (show result) $
     repStr `isInfixOf` result &&
     not (patStr `isInfixOf` result)
   where

@@ -15,6 +15,7 @@ import Test.Framework (testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import Test.QuickCheck
 
+-- Abitrary option sets.
 instance Arbitrary Options where
     arbitrary = Options
         <$> fmap fromAlpha arbitrary
@@ -26,15 +27,18 @@ instance Arbitrary Options where
         <*> arbitrary -- patchFilePathOpt
         <*> arbitrary -- keepGoingOpt
         <*> elements [ConsiderCase, IgnoreCase]
+        <*> listOf (fmap fromAlpha arbitrary)
+        <*> fmap getSmall arbitrary
+        <*> fmap getSmall arbitrary
     shrink opts = do
         files <- shrink (filesOpt opts)
         bs <- shrink (backupSuffixOpt opts)
         pfp <- shrink (patchFilePathOpt opts)
-        ps <- shrink (patternStringOpt opts)
+        ps <- shrink (toReplaceStringOpt opts)
         rs <- shrink (replacementStringOpt opts)
         return $ opts
             { filesOpt = files
-            , patternStringOpt = ps
+            , toReplaceStringOpt = ps
             , replacementStringOpt = rs
             , backupSuffixOpt = bs
             , patchFilePathOpt = pfp
@@ -74,9 +78,11 @@ arbFlag = do
         , (1, return [longFlag, flagArg])
         ]
 
+-- Abitrary flags have one or two parts.
 prop_arbFlag_length =
     forAll arbFlag (\flag -> length flag `elem` [1..2])
 
+-- The first part of an arbitrary flag starts with a hypen.
 prop_arbFlag_dash =
     forAll arbFlag (\flag -> "-" `isPrefixOf` head flag)
 
@@ -103,6 +109,8 @@ arbFullArgList = do
      (FullArgList _ _ args) <- arbFullArgList'
      return args
 
+-- An argument list in two forms: separate flags and conditional arguments, and
+-- a combined list.
 data FullArgList = FullArgList
     [String]    -- Positional arguments.
     [[String]]  -- Flags.
@@ -133,7 +141,7 @@ prop_parseArgs_noFlags name =
     case parseArgs name args of
         Right opts -> conjoin
             [ filesOpt opts == fs
-            , patternStringOpt opts == p
+            , toReplaceStringOpt opts == p
             , replacementStringOpt opts == r
             ]
         Left _ -> property False
@@ -144,27 +152,30 @@ prop_parseArgs_withFlags name =
   case parseArgs name args
   of Right opts -> conjoin
                    [ filesOpt opts ==? fs
-                   , patternStringOpt opts ==? p
+                   , toReplaceStringOpt opts ==? p
                    , replacementStringOpt opts ==? r
                    ]
      Left _ -> discard
 
+-- Check that --diff is parsed correctly.
 prop_parseArgs_withDiff name  =
     forAll arbFullArgList $ \args ->
     ("-D" `elem` args || "--diff" `elem` args) ==> case parseArgs name args of
-        Left _ -> discard
+        Left _     -> discard
         Right opts -> planModeOpt opts == DiffMode
 
+-- Test that the dry-run flag is parsed correctly.
 prop_parseArgs_withDryRun name =
     forAll arbFullArgList $ \args ->
     ("-N" `elem` args || "--no-modify" `elem` args) ==> case parseArgs name args of
-        Left _ -> discard
+        Left _     -> discard
         Right opts -> planModeOpt opts == DryRunMode
 
+-- Test that the default mode is correct.
 prop_parseArgs_withDefaultMode name =
     forAll arbFullArgList $ \args ->
     not (any (`elem` modeFlags) args) ==> case parseArgs name args of
-        Left _ -> discard
+        Left _     -> discard
         Right opts -> planModeOpt opts == RunMode
 
 tests =

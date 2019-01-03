@@ -50,7 +50,7 @@ library
 
   -- Other library packages from which modules are imported.
   -- To replace: text-icu
-  build-depends:       base == 4.7.*
+  build-depends:       base
                      , bytestring
                      , directory
                      , directory >= 1.2.1.0
@@ -90,3 +90,9 @@ test-suite gsub-test
                      , test-framework
                      , test-framework-hunit
                      , test-framework-quickcheck2
+  other-modules:       FindReplaceTest
+                     , GsubTest
+                     , OptionsTest
+                     , PlanTest
+                     , TestUtils
+

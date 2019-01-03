@@ -5,48 +5,51 @@ import Gsub
 import Plan
 import PlanTest
 
-import Control.Exception
-import Control.Monad
+import           Control.Exception
+import           Control.Monad
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy.Char8 as L8
-import Data.IORef
-import Data.List (isInfixOf)
-import System.Directory
-import System.Environment
-import System.Exit
-import System.FilePath
-import System.IO
-import System.IO.Silently (hCapture)
-import Test.Framework (testGroup)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.HUnit
-import Test.QuickCheck
+import           Data.IORef
+import           Data.List (isInfixOf)
+import           System.Directory
+import           System.Environment
+import           System.Exit
+import           System.FilePath
+import           System.IO
+import           System.IO.Silently (hCapture)
+import           Test.Framework (testGroup)
+import           Test.Framework.Providers.HUnit (testCase)
+import           Test.Framework.Providers.QuickCheck2 (testProperty)
+import           Test.HUnit
+import           Test.QuickCheck
 
 instance Show Plan where
     show p = "Plan {options = " ++ show (options p) ++ "}"
 
+prop_transformLine :: Plan -> String -> String -> Property
 prop_transformLine plan before after =
-    not (pattern `isInfixOf` (replacement ++ after)) ==>
-    not (pattern `isInfixOf` (before ++ replacement)) ==>
+    not (pat `isInfixOf` (replacement ++ after)) ==>
+    not (pat `isInfixOf` (before ++ replacement)) ==>
     replacement `isInfixOf` result' &&
-    not (pattern `isInfixOf` result')
-  where pattern = patternString plan
+    not (pat `isInfixOf` result')
+  where pat = patternString plan
         replacement = replacementString plan
-        content = before ++ pattern ++ after
+        content = before ++ pat ++ after
         content' = B8.pack content
         xfrm = transformation plan
         result = transformLine xfrm content'
         result' = B8.unpack result
 
+prop_transformFileContent :: Plan -> String -> String -> Property
 prop_transformFileContent plan before after =
-    not (pattern `isInfixOf` (replacement ++ after)) ==>
-    not (pattern `isInfixOf` (before ++ replacement)) ==>
+    null (contextStrings plan) ==>
+    not (pat `isInfixOf` (replacement ++ after)) ==>
+    not (pat `isInfixOf` (before ++ replacement)) ==>
     replacement `isInfixOf` result' &&
-    not (pattern `isInfixOf` result')
-  where pattern = patternString plan
+    not (pat `isInfixOf` result')
+  where pat = patternString plan
         replacement = replacementString plan
-        content' = before ++ pattern ++ after
+        content' = before ++ pat ++ after
         content = L8.pack content'
         (_, result) = transformFileContent plan content
         result' = L8.unpack result
@@ -54,10 +57,13 @@ prop_transformFileContent plan before after =
 testDataDir = "dist/test_tmp"
 testBin = "dist/build/gsub/gsub"
 
+testFile :: FilePath -> FilePath
 testFile = (testDataDir </>)
 
+writeTestFile :: FilePath -> String -> IO ()
 writeTestFile path = writeFile (testFile path)
 
+assertTestFile :: FilePath -> String -> IO ()
 assertTestFile path content = do
     content' <- readFile (testFile path)
     assertEqual ("wrong content for " ++ path) content content'
@@ -76,6 +82,7 @@ run args = do
   where
     catchExitCode e@(ExitFailure _) = return e
 
+setUp :: IO ()
 setUp = do
     exists <- doesDirectoryExist testDataDir
     when exists $
@@ -107,6 +114,7 @@ case_noArgs = do
 
 -- Check that various file-related error conditions are detected and
 -- cause execution to abort.
+case_badFileArgs :: IO ()
 case_badFileArgs = do
     setUp
     writeFile file3 "foo"
@@ -124,6 +132,7 @@ case_badFileArgs = do
         file3' = testFile ".#open_in_emacs"
 
 -- Check that invalid backreference numbers are detected.
+case_badBackref :: IO ()
 case_badBackref = do
     setUp
     expectStderr
@@ -132,6 +141,7 @@ case_badBackref = do
         ["gsub: pattern has fewer than 1 groups"]
 
 -- Check a single replace in a single file.
+case_simpleReplace :: IO ()
 case_simpleReplace = do
     setUp
     writeTestFile "a" "foo\n"
@@ -142,7 +152,42 @@ case_simpleReplace = do
         ,"Diff saved in " ++ testFile "p"]
     assertTestFile "a" "bar\n"
 
+-- Check a single replace in a single file with a context requirement.
+case_simpleReplaceWithContext :: IO ()
+case_simpleReplaceWithContext = do
+    setUp
+    writeTestFile "a" "foo\nfoox\nfoo\n"
+    expectStdout
+        ["-p", testFile "p", "foo", "bar", testFile "a", "-cx"]
+        [testFile "a" ++ ": 1 line changed"
+        ,"Changed 1 line in 1 file"
+        ,"Diff saved in " ++ testFile "p"]
+    assertTestFile "a" "foo\nbarx\nfoo\n"
+
+case_simpleReplaceWithContextBefore :: IO ()
+case_simpleReplaceWithContextBefore = do
+    setUp
+    writeTestFile "a" "foox\nfoo\nfoo\n"
+    expectStdout
+        ["-p", testFile "p", "foo", "bar", testFile "a", "-cx", "-B1"]
+        [testFile "a" ++ ": 2 lines changed"
+        ,"Changed 2 lines in 1 file"
+        ,"Diff saved in " ++ testFile "p"]
+    assertTestFile "a" "barx\nbar\nfoo\n"
+
+case_simpleReplaceWithContextAfter :: IO ()
+case_simpleReplaceWithContextAfter = do
+    setUp
+    writeTestFile "a" "foo\nfoo\nfoox\n"
+    expectStdout
+        ["-p", testFile "p", "foo", "bar", testFile "a", "-cx", "-A1"]
+        [testFile "a" ++ ": 2 lines changed"
+        ,"Changed 2 lines in 1 file"
+        ,"Diff saved in " ++ testFile "p"]
+    assertTestFile "a" "foo\nbar\nbarx\n"
+
 -- Check that (lack of) a newline is preserved.
+case_noNewLine :: IO ()
 case_noNewLine = do
     setUp
     writeTestFile "a" "foo"
@@ -166,6 +211,7 @@ case_fixedStrings = do
 
 -- Check a simple replace in multiple files, showing that changes are
 -- counted correctly.
+case_simpleReplaceMulti :: IO ()
 case_simpleReplaceMulti = do
     setUp
     writeTestFile "a" "foo\nfoo\n"
@@ -178,6 +224,7 @@ case_simpleReplaceMulti = do
         ,"Diff saved in " ++ testFile "p"]
 
 -- Check that regex replacement works.
+case_regexReplace :: IO ()
 case_regexReplace = do
     setUp
     writeTestFile "a" "foo\n"
@@ -189,6 +236,7 @@ case_regexReplace = do
     assertTestFile "a" "fx\n"
 
 -- Check that backreference groups work.
+case_groupReplace :: IO ()
 case_groupReplace = do
     setUp
     writeTestFile "a" "1 ax by cz 2\n"
@@ -200,6 +248,7 @@ case_groupReplace = do
     assertTestFile "a" "1 ax:xa by:yb cz:zc 2\n"
 
 -- Check that diff mode works.
+case_simpleDiff :: IO ()
 case_simpleDiff = do
     setUp
     writeTestFile "a" "a\nb\nc\n"
@@ -215,6 +264,7 @@ case_simpleDiff = do
     assertTestFile "a" "a\nb\nc\n"
 
 -- Check that dry run mode works.
+case_simpleDryRun :: IO ()
 case_simpleDryRun = do
     setUp
     writeTestFile "a" "foo\n"
@@ -233,6 +283,9 @@ tests =
     , testCase "case_badFileArgs" case_badFileArgs
     , testCase "case_badBackref" case_badBackref
     , testCase "case_simpleReplace" case_simpleReplace
+    , testCase "case_simpleReplaceWithContext" case_simpleReplaceWithContext
+    , testCase "case_simpleReplaceWithContextBefore" case_simpleReplaceWithContextBefore
+    , testCase "case_simpleReplaceWithContextAfter" case_simpleReplaceWithContextAfter
     , testCase "case_noNewLine" case_noNewLine
     , testCase "case_fixedStrings" case_fixedStrings
     , testCase "case_simpleReplaceMulti" case_simpleReplaceMulti
