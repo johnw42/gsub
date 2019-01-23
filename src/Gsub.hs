@@ -1,4 +1,4 @@
-module Gsub where
+ module Gsub where
 
 import DiffDB
 import FindReplace
@@ -72,10 +72,10 @@ checkFile path = loop checks
 -- Test whether a file appears to be open in emacs.
 testIsOpenInEmacs :: FilePath -> IO Bool
 testIsOpenInEmacs p = do
-    entries <- getDirectoryContents dirName
-    return $ ".#" ++ baseName `elem` entries
+    doesFileExist $ "tmp" ++ map replaceSlash p
   where
-    (dirName, baseName) = splitFileName p
+    replaceSlash '/' = '!'
+    replaceSlash c   = c
 
 
 -- | Checks that all files in the plan can be operated upon.

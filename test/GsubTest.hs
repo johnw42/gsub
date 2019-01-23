@@ -117,19 +117,14 @@ case_noArgs = do
 case_badFileArgs :: IO ()
 case_badFileArgs = do
     setUp
-    writeFile file3 "foo"
-    writeFile file3' "foo"
     expectStderr
-        ["a", "b", file1, file2, file3]
+        ["a", "b", file1, file2]
         2
         [ file1 ++ ": is a directory"
         , file2 ++ ": no such file"
-        , file3 ++ ": open in emacs"
         ]
   where file1 = testDataDir
         file2 = testFile "no_such_file"
-        file3 = testFile "open_in_emacs"
-        file3' = testFile ".#open_in_emacs"
 
 -- Check that invalid backreference numbers are detected.
 case_badBackref :: IO ()
