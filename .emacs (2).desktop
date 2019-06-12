@@ -1,0 +1,272 @@
+;; -*- mode: emacs-lisp; coding: emacs-mule; -*-
+;; --------------------------------------------------------------------------
+;; Desktop File for Emacs
+;; --------------------------------------------------------------------------
+;; Created Wed Jan 30 15:49:32 2019
+;; Desktop file format version 206
+;; Emacs version 26.1
+
+;; Global section:
+(setq desktop-saved-frameset nil)
+(setq desktop-missing-file-warning nil)
+(setq tags-file-name nil)
+(setq tags-table-list nil)
+(setq search-ring '("RE." "contextpatterns" "notcontextstrings" "emacs" "testfile" "emacs" ".#" "backup" "working" "modified" "tempora" "testisopeninemacs" "emacs" "conte" "does" "doesPath"))
+(setq regexp-search-ring '("^function" "/\\*.*\n *\\*" ".*\n *\\*" "^ *then" "\\.\n *then" "[^a-z._]" "GG"))
+(setq register-alist nil)
+(setq file-name-history '("~/git/gsub/src/FindReplace.hs" "~/git/gsub/" "~/git/gsub/src/" "~/git/gsub/test/OptionsTest.hs" "~/git/gsub/src/" "~/git/gsub/src/Options.hs" "~/git/gsub/test/GsubTest.hs" "~/git/gsub/src/Gsub.hs" "/usr/local/google/home/jrw/.ssh/config" "~/git/gsub/gsub.cabal" "/usr/local/google/home/jrw/git/gsub/src/Options.hs" "~/git/gsub/test/FindReplaceTest.hs" "~/git/gsub/src/" "~/git/gsub/src/Directory.hs" "~/git/gsub/src/" "~/git/gsub/src/Plan.hs" "~/git/gsub/src/Utils.hs" "~/git/gsub/src/Types.hs" "~/homedir/.emacs.el" "~/git/gsub/test/" "~/git/gsub/src/" "~/git/gsub/src/Gsub.hs" "~/git/gsub/TODO" "~/golf/golf122.hs" "~/golf/golf122.py" "~/ghome/pbin/btest" "~/ghome/pbin/bb" "~/ghome/pbin/bt" "~/golf/tmp.txt" "/usr/local/google/home/jrw/git5/cloudview/google3/chrome_platform/cast/script/webrtc/turn.js:3:" "~/golf/golf125.py" "~/git/webrtc/src/webrtc/modules/video_coding/codecs/vp8/vp8.gyp" "~/git/webrtc/src/webrtc/system_wrappers/system_wrappers.gyp" "/usr/local/google/home/jrw/git5/cloudview/google3/chrome_platform/cast/script/sender/cloud/cloud_setup.js:54:" "~/git5/cloudview/google3/chrome_platform/cast/script/common/gapi/gapi_service_caller.js" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/devices/receiver_device_service.js" "~/git5/cloudview/google3/chrome_platform/cast/script/BUILD" "/usr/local/google/home/jrw/git5/weave/google3/weave_streaming.h" "~/git5/cloudview/google3/java/com/google/chrome/cloudview/script/sender/background/background_setup.js" "~/git5/cloudview/google3/chrome_platform/cast/script/common/exponential_backoff.js" "~/git5/cloudview/google3/chrome_platform/cast/script/common/cloud/devices/devices_service.js" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/manifest.yaml" "~/git5/cloudview/google3/chrome_platform/cast/script/common/cloud/cloud_config.js" "~/git5/cloudview/google3/chrome_platform/cast/script/common/cloud/cloud_device.js" "~/git5/weave/google3/java/com/google/clouddevices/backend/validation/traits/recordedMedia.json" "~/git5/weave/google3/java/com/google/clouddevices/backend/validation/traits/wifi.json" "~/git5/weave/google3/java/com/google/clouddevices/backend/validation/traits/volume.json" "~/golf/golf123.hs" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/classroom/course_model.js" "~/git/libweave/libweave/src/device_registration_info.cc" "~/git/libweave/libweave/examples/daemon/common/daemon.h" "~/pbin/elisp/my-google.el" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/BUILD" "~/git5/cloudview/google3/chrome_platform/cast/tests/script/packaged_app_receiver/BUILD" "~/golf/golf124.hs" "~/golf/golf121.py" "~/git5/cloudview/google3/chrome_platform/media_router/extension/manifest.json.pre" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/sandbox_extra.js" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/acl/acl.html" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/feedback/feedback_ctrl.js" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/feedback/feedback.html" "~/golf/golf121.hs" "~/golf/golf112.hs" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/css/acls.gss" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/bootstrap_cv.less" "~/homedir/bin/per_hour" "/usr/local/google/home/jrw/homedir/bin/per_day" "~/golf/golf112.py" "~/golf/golf111.hs" "/usr/local/google/home/jrw/homedir/bin/git-recent-branches" "~/git5/weave/google3/java/com/google/clouddevices/backend/validation/traits/webrtc.json" "~/git5/weave/google3/java/com/google/clouddevices/backend/validation/commands/webrtc.json" "~/git5/weave/google3/java/com/google/clouddevices/backend/validation/commands/videoCapture.json" "~/git5/cloudview/google3/chrome_platform/cast/tests/script/BUILD" "/usr/local/google/home/jrw/git5/cloudview/google3/chrome_platform/cast/script/BUILD" "~/git5/cloudview/google3/chrome_platform/cast/script/common/cloud/acl/acl_model.js" "~/golf/golf109.hs" "~/golf/golf109.py" "~/git5/cloudview/google3/java/com/google/chrome/cloudview/script/cloudview_scripts.blueprint" "/usr/local/google/home/jrw/git5/cloudview/google3/chrome_platform/cast/script/common/cloud/devices/cloud_device_model.js" "/usr/local/google/home/jrw/chrome_dev/src/google_apis/internal/google_chrome_api_keys.h" "~/golf/golf113.hs" "~/git5/cloudview/google3/chrome_platform/cast/script/common/manifest_id.js" "~/git5/cloudview/google3/chrome_platform/cast/script/common/setup.js" "~/git5/cloudview/google3/chrome_platform/cast/script/common/platform_utils.js" "~/golf/golf101.hs" "/usr/local/google/home/jrw/golf/golf113.hs" "/usr/local/google/home/jrw/homedir/bin/e" "/usr/local/google/home/jrw/git5/cloudview/google3/chrome_platform/cast/script/sender/dial/dial_client.js" "/usr/local/google/home/jrw/git5/cloudview/google3/chrome_platform/cast/script/sender/cast_service.js" "~/.config/chrome-test/settings.yaml" "~/git5/closure/google3/javascript/closure/labs/iterable/iterable_test.js" "~/.local/share/emacs/24.5/lisp/progmodes/js.el.gz" "~/git5/closure/google3/javascript/closure/labs/iterable/iterable.js" "~/git5/closure/google3/javascript/closure/promise/promise.js" "~/git5/cloudview/google3/chrome_platform/cast/tools/oauth2_config.yaml" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/classroom/classroom_service.js" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/event_page.js" "~/git5/cloudview/google3/chrome_platform/cast/script/packaged_app_receiver/acl/acl_ctrl.js" "/usr/local/google/home/jrw/homedir/bin/less"))
+
+;; Buffer section -- buffers listed in same order as in buffer list:
+(desktop-create-buffer 206
+  "src/FindReplace.hs"
+  "FindReplace.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  5922
+  '(175 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 23633 6706 228997 80000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "src/Gsub.hs"
+  "Gsub.hs"
+  'haskell-mode
+  '(highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  774
+  '(708 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 23633 6636 887269 103000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "src/Plan.hs"
+  "Plan.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  769
+  '(713 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 23632 64358 336023 203000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "test/OptionsTest.hs"
+  "OptionsTest.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  494
+  '(841 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 23632 64352 504044 983000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "src/Options.hs"
+  "Options.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  990
+  '(3036 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 23632 64085 239043 679000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "../../../../../../share/emacs/26.1+gg1+14/lisp/files.el.gz"
+  "files.el.gz"
+  'emacs-lisp-mode
+  '(highlight-current-line-minor-mode abbrev-mode eldoc-mode override-global-mode compile-on-save-mode auto-revert-mode nameless-mode googlemenu-mode highlight-symbol-mode paredit-mode view-mode)
+  261519
+  '(261179 nil)
+  t
+  nil
+  '((buffer-display-time 23632 51414 877281 112000) (buffer-file-coding-system . prefer-utf-8-unix) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "test/GsubTest.hs"
+  "GsubTest.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  3551
+  '(6967 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 23632 51415 833882 4000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "../../../../../../share/emacs/26.1+gg1+14/lisp/simple.el.gz"
+  "simple.el.gz"
+  'emacs-lisp-mode
+  '(highlight-current-line-minor-mode abbrev-mode eldoc-mode override-global-mode compile-on-save-mode auto-revert-mode nameless-mode googlemenu-mode highlight-symbol-mode paredit-mode view-mode)
+  306085
+  '(306215 nil)
+  t
+  nil
+  '((buffer-display-time 23632 50830 117237 350000) (buffer-file-coding-system . utf-8-unix) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "../../homedir/ssh/config"
+  "config"
+  'conf-space-mode
+  '(abbrev-mode override-global-mode googlemenu-mode)
+  1719
+  '(959 nil)
+  nil
+  nil
+  '((buffer-display-time 23632 50181 405349 307000) (buffer-file-coding-system . undecided-unix)))
+
+(desktop-create-buffer 206
+  "gsub.cabal"
+  "gsub.cabal"
+  'haskell-cabal-mode
+  '(abbrev-mode override-global-mode googlemenu-mode)
+  3016
+  '(2862 nil)
+  nil
+  nil
+  '((indent-tabs-mode) (buffer-display-time 23631 17056 299134 531000) (buffer-file-coding-system . undecided-unix)))
+
+(desktop-create-buffer 206
+  "test/FindReplaceTest.hs"
+  "FindReplaceTest.hs"
+  'haskell-mode
+  '(highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  200
+  '(2836 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 23631 16460 57058 862000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  ".dir-locals.el"
+  ".dir-locals.el"
+  'emacs-lisp-mode
+  '(highlight-current-line-minor-mode abbrev-mode eldoc-mode override-global-mode compile-on-save-mode nameless-mode googlemenu-mode highlight-symbol-mode paredit-mode)
+  183
+  '(nil nil)
+  nil
+  nil
+  '((buffer-display-time 23631 16302 184083 556000) (buffer-file-coding-system . prefer-utf-8-unix) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "test/TestMain.hs"
+  "TestMain.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  306
+  '(306 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 24252 49363 571709 197000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "src/Types.hs"
+  "Types.hs"
+  'haskell-mode
+  '(highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  533
+  '(652 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 24252 49365 955913 255000) (buffer-file-coding-system . utf-8-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "src/Utils.hs"
+  "Utils.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  202
+  '(202 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 24252 49368 167828 108000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "TODO"
+  "TODO"
+  'fundamental-mode
+  '(abbrev-mode override-global-mode googlemenu-mode)
+  192
+  '(1 nil)
+  nil
+  nil
+  '((buffer-display-time 24252 49368 515069 410000) (buffer-file-coding-system . utf-8-unix)))
+
+(desktop-create-buffer 206
+  "Main.hs"
+  "Main.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  42
+  '(42 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 24252 49369 211060 956000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  ".git/config"
+  "config"
+  'conf-unix-mode
+  '(abbrev-mode override-global-mode googlemenu-mode)
+  257
+  '(141 nil)
+  nil
+  nil
+  '((buffer-display-time 24252 49369 454958 853000) (buffer-file-coding-system . undecided-unix)))
+
+(desktop-create-buffer 206
+  "test/TestUtils.hs"
+  "TestUtils.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  482
+  '(482 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 24252 49370 169090 497000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "test/PlanTest.hs"
+  "PlanTest.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  603
+  '(547 nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 24252 49371 22929 818000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "src/DiffDB.hs"
+  "DiffDB.hs"
+  'haskell-mode
+  '(haskell-doc-mode highlight-current-line-minor-mode abbrev-mode eldoc-mode flycheck-mode override-global-mode googlemenu-mode highlight-symbol-mode hindent-mode hyai-mode company-mode intero-mode pretty-haskell-mode)
+  1
+  '(nil nil)
+  nil
+  nil
+  '((tab-width . 8) (indent-tabs-mode) (buffer-display-time 24252 49371 852117 617000) (buffer-file-coding-system . undecided-unix) (fill-column . 80) (truncate-lines . t)))
+
+(desktop-create-buffer 206
+  "emacs-indent-notes.txt"
+  "emacs-indent-notes.txt"
+  'text-mode
+  '(abbrev-mode override-global-mode googlemenu-mode)
+  135
+  '(1400 nil)
+  nil
+  nil
+  '((buffer-display-time 24252 49372 136168 114000) (buffer-file-coding-system . utf-8-unix)))
+
+(desktop-create-buffer 206
+  "../../.local/share/emacs/24.5/lisp/subr.el.gz"
+  "subr.el.gz"
+  'emacs-lisp-mode
+  '(highlight-current-line-minor-mode abbrev-mode eldoc-mode override-global-mode compile-on-save-mode nameless-mode googlemenu-mode highlight-symbol-mode paredit-mode)
+  8019
+  '(8019 nil)
+  nil
+  nil
+  '((buffer-display-time 24252 49375 771974 594000) (buffer-file-coding-system . utf-8-unix) (truncate-lines . t)))
+
