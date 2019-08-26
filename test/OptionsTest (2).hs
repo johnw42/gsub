@@ -12,13 +12,8 @@ import Data.Maybe
 import System.IO (stdout)
 import System.Random
 import Test.Framework (testGroup)
-import Test.Framework.Providers.HUnit (testCase)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.HUnit
 import Test.QuickCheck
-
--- XXX
-import Options.Applicative
 
 -- Abitrary option sets.
 instance Arbitrary Options where
@@ -32,6 +27,7 @@ instance Arbitrary Options where
         <*> arbitrary -- patchFilePathOpt
         <*> arbitrary -- keepGoingOpt
         <*> elements [ConsiderCase, IgnoreCase]
+        <*> listOf (fmap fromAlpha arbitrary)
         <*> listOf (fmap fromAlpha arbitrary)
         <*> fmap getSmall arbitrary
         <*> fmap getSmall arbitrary
@@ -183,18 +179,6 @@ prop_parseArgs_withDefaultMode name =
         Left _     -> discard
         Right opts -> planModeOpt opts == RunMode
 
-type Pairs = [(String,String)]
-
-tupleParser :: Parser Pairs
-tupleParser = many $ (,)
-              <$> strArgument (metavar "<src>")
-              <*> strArgument (metavar "<dest>")
-
-case_foo :: IO ()
-case_foo = do
-
-    return ()
-
 tests =
     testGroup "Options"
     [ testProperty "arbFlag_length" prop_arbFlag_length
@@ -205,5 +189,4 @@ tests =
     , testProperty "parseArgs_withDiff" prop_parseArgs_withDiff
     , testProperty "parseArgs_withDryRun" prop_parseArgs_withDryRun
     , testProperty "parseArgs_withDefaultMode" prop_parseArgs_withDefaultMode
-    , testCase "case_foo" case_foo
     ]

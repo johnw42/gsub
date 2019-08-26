@@ -1,0 +1,30 @@
+In 'do' block:
+
+  haskell-indentation-push-indentation(8)
+  haskell-indentation-add-indentation(4)
+  haskell-indentation-expression()
+  haskell-indentation-implicit-layout-list(haskell-indentation-expression)
+  haskell-indentation-layout(haskell-indentation-expression)
+  haskell-indentation-expression-layout()
+* haskell-indentation-with-starter(haskell-indentation-expression-layout)
+  haskell-indentation-expression()
+  haskell-indentation-statement-right(haskell-indentation-expression)
+  haskell-indentation-expression()
+  haskell-indentation-separated(haskell-indentation-expression "," nil)
+  haskell-indentation-declaration()
+  haskell-indentation-implicit-layout-list((lambda nil (let ((parser (assoc current-token haskell-indentation-toplevel-list))) (if parser (funcall (cdr parser)) (haskell-indentation-declaration)))))
+  haskell-indentation-layout((lambda nil (let ((parser (assoc current-token haskell-indentation-toplevel-list))) (if parser (funcall (cdr parser)) (haskell-indentation-declaration)))))
+  haskell-indentation-toplevel()
+
+No 'do' block:
+
+  haskell-indentation-push-indentation(4)
+  haskell-indentation-add-indentation(4)
+  haskell-indentation-expression()
+  haskell-indentation-statement-right(haskell-indentation-expression)
+  haskell-indentation-expression()
+  haskell-indentation-separated(haskell-indentation-expression "," nil)
+  haskell-indentation-declaration()
+  haskell-indentation-implicit-layout-list((lambda nil (let ((parser (assoc current-token haskell-indentation-toplevel-list))) (if parser (funcall (cdr parser)) (haskell-indentation-declaration)))))
+  haskell-indentation-layout((lambda nil (let ((parser (assoc current-token haskell-indentation-toplevel-list))) (if parser (funcall (cdr parser)) (haskell-indentation-declaration)))))
+  haskell-indentation-toplevel()

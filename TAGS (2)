@@ -1,0 +1,373 @@
+
+./test/FindReplaceTest.hs,920
+module FindReplaceTest FindReplaceTest0,1
+instance instance16,17
+prop_mergeLiterals1 prop_mergeLiterals127,28
+prop_mergeLiterals1 prop_mergeLiterals130,31
+prop_mergeLiterals2 prop_mergeLiterals241,42
+prop_mergeLiterals2 prop_mergeLiterals242,43
+prop_expand prop_expand49,50
+prop_expand prop_expand50,51
+showReplacement showReplacement67,68
+showReplacement showReplacement68,69
+prop_parseReplacement prop_parseReplacement80,81
+prop_parseReplacement prop_parseReplacement81,82
+case_parseReplacement0 case_parseReplacement090,91
+prop_transformLineFixed1 prop_transformLineFixed193,94
+prop_transformLineFixed1 prop_transformLineFixed199,100
+prop_transformLineFixed2 prop_transformLineFixed2109,110
+prop_transformLineFixed2 prop_transformLineFixed2114,115
+prop_transformLineRegex prop_transformLineRegex125,126
+prop_transformLineRegex prop_transformLineRegex130,131
+tests tests142,143
+
+./test/TestMain.hs,38
+module Main Main0,1
+main main9,10
+
+./test/OptionsTest.hs,1265
+module OptionsTest OptionsTest0,1
+instance instance18,19
+type FlagPart FlagPart47,48
+type PosArg PosArg48,49
+arbPosArg arbPosArg51,52
+arbPosArg arbPosArg52,53
+arbPosArgList arbPosArgList55,56
+arbPosArgList arbPosArgList56,57
+modeFlags modeFlags58,59
+otherFlags otherFlags59,60
+shortFlagsWithArg shortFlagsWithArg60,61
+longFlagsWithArg longFlagsWithArg61,62
+arbFlag arbFlag64,65
+arbFlag arbFlag65,66
+prop_arbFlag_length prop_arbFlag_length82,83
+prop_arbFlag_dash prop_arbFlag_dash86,87
+arbFlagList arbFlagList90,91
+arbFlagList arbFlagList91,92
+withFlags withFlags94,95
+withFlags withFlags95,96
+arbFullArgList arbFullArgList107,108
+arbFullArgList arbFullArgList108,109
+data FullArgList FullArgList114,115
+data FullArgList = FullArgListFullArgList114,115
+arbFullArgList' arbFullArgList'121,122
+arbFullArgList' arbFullArgList'122,123
+prop_parseArgs_notEnough prop_parseArgs_notEnough129,130
+prop_parseArgs_noFlags prop_parseArgs_noFlags139,140
+prop_parseArgs_withFlags prop_parseArgs_withFlags150,151
+prop_parseArgs_withDiff prop_parseArgs_withDiff161,162
+prop_parseArgs_withDryRun prop_parseArgs_withDryRun168,169
+prop_parseArgs_withDefaultMode prop_parseArgs_withDefaultMode175,176
+tests tests181,182
+
+./test/GsubTest.hs,2075
+module GsubTest GsubTest0,1
+instance instance25,26
+prop_transformLine prop_transformLine28,29
+prop_transformLine prop_transformLine29,30
+prop_transformFileContent prop_transformFileContent42,43
+prop_transformFileContent prop_transformFileContent43,44
+testDataDir testDataDir56,57
+testBin testBin57,58
+testFile testFile59,60
+testFile testFile60,61
+writeTestFile writeTestFile62,63
+writeTestFile writeTestFile63,64
+assertTestFile assertTestFile65,66
+assertTestFile assertTestFile66,67
+run run70,71
+run run71,72
+setUp setUp84,85
+setUp setUp85,86
+expectStdout expectStdout91,92
+expectStdout expectStdout92,93
+expectStderr expectStderr98,99
+expectStderr expectStderr99,100
+case_noArgs case_noArgs107,108
+case_badFileArgs case_badFileArgs116,117
+case_badFileArgs case_badFileArgs117,118
+case_badBackref case_badBackref129,130
+case_badBackref case_badBackref130,131
+case_simpleReplace case_simpleReplace138,139
+case_simpleReplace case_simpleReplace139,140
+case_simpleReplaceWithContext case_simpleReplaceWithContext150,151
+case_simpleReplaceWithContext case_simpleReplaceWithContext151,152
+case_simpleReplaceWithContextBefore case_simpleReplaceWithContextBefore161,162
+case_simpleReplaceWithContextBefore case_simpleReplaceWithContextBefore162,163
+case_simpleReplaceWithContextAfter case_simpleReplaceWithContextAfter172,173
+case_simpleReplaceWithContextAfter case_simpleReplaceWithContextAfter173,174
+case_noNewLine case_noNewLine184,185
+case_noNewLine case_noNewLine185,186
+case_fixedStrings case_fixedStrings196,197
+case_simpleReplaceMulti case_simpleReplaceMulti208,209
+case_simpleReplaceMulti case_simpleReplaceMulti209,210
+case_regexReplace case_regexReplace221,222
+case_regexReplace case_regexReplace222,223
+case_groupReplace case_groupReplace233,234
+case_groupReplace case_groupReplace234,235
+case_simpleDiff case_simpleDiff245,246
+case_simpleDiff case_simpleDiff246,247
+case_simpleDryRun case_simpleDryRun261,262
+case_simpleDryRun case_simpleDryRun262,263
+tests tests272,273
+
+./test/PlanTest.hs,74
+module PlanTest PlanTest0,1
+instance instance12,13
+tests tests24,25
+
+./test/.stack-work/intero/interoRsmITj-STAGING.hs,2075
+module GsubTest GsubTest0,1
+instance instance25,26
+prop_transformLine prop_transformLine28,29
+prop_transformLine prop_transformLine29,30
+prop_transformFileContent prop_transformFileContent42,43
+prop_transformFileContent prop_transformFileContent43,44
+testDataDir testDataDir56,57
+testBin testBin57,58
+testFile testFile59,60
+testFile testFile60,61
+writeTestFile writeTestFile62,63
+writeTestFile writeTestFile63,64
+assertTestFile assertTestFile65,66
+assertTestFile assertTestFile66,67
+run run70,71
+run run71,72
+setUp setUp84,85
+setUp setUp85,86
+expectStdout expectStdout91,92
+expectStdout expectStdout92,93
+expectStderr expectStderr98,99
+expectStderr expectStderr99,100
+case_noArgs case_noArgs107,108
+case_badFileArgs case_badFileArgs116,117
+case_badFileArgs case_badFileArgs117,118
+case_badBackref case_badBackref134,135
+case_badBackref case_badBackref135,136
+case_simpleReplace case_simpleReplace143,144
+case_simpleReplace case_simpleReplace144,145
+case_simpleReplaceWithContext case_simpleReplaceWithContext155,156
+case_simpleReplaceWithContext case_simpleReplaceWithContext156,157
+case_simpleReplaceWithContextBefore case_simpleReplaceWithContextBefore166,167
+case_simpleReplaceWithContextBefore case_simpleReplaceWithContextBefore167,168
+case_simpleReplaceWithContextAfter case_simpleReplaceWithContextAfter177,178
+case_simpleReplaceWithContextAfter case_simpleReplaceWithContextAfter178,179
+case_noNewLine case_noNewLine189,190
+case_noNewLine case_noNewLine190,191
+case_fixedStrings case_fixedStrings201,202
+case_simpleReplaceMulti case_simpleReplaceMulti213,214
+case_simpleReplaceMulti case_simpleReplaceMulti214,215
+case_regexReplace case_regexReplace226,227
+case_regexReplace case_regexReplace227,228
+case_groupReplace case_groupReplace238,239
+case_groupReplace case_groupReplace239,240
+case_simpleDiff case_simpleDiff250,251
+case_simpleDiff case_simpleDiff251,252
+case_simpleDryRun case_simpleDryRun266,267
+case_simpleDryRun case_simpleDryRun267,268
+tests tests277,278
+
+./test/.stack-work/intero/interoEUgYSc-TEMP.hs,0
+
+./test/TestUtils.hs,327
+module TestUtils TestUtils0,1
+newtype AlphaString AlphaString6,7
+newtype AlphaString = Alpha Alpha6,7
+newtype AlphaString = Alpha { fromAlpha fromAlpha6,7
+type RegexPattern RegexPattern7,8
+type ReplacementPattern ReplacementPattern8,9
+instance instance10,11
+infix infix14,15
+(=(15,16
+(====?15,16
+a a16,17
+
+./src/Options.hs,885
+data OptionsOptions15,16
+    = OptionsOptions16,17
+      { toReplaceStringOpt toReplaceStringOpt17,18
+      , replacementStringOpt replacementStringOpt18,19
+      , filesOpt filesOpt19,20
+      , planModeOpt planModeOpt20,21
+      , backupSuffixOpt backupSuffixOpt21,22
+      , replacementModeOpt replacementModeOpt22,23
+      , patchFilePathOpt patchFilePathOpt23,24
+      , keepGoingOpt keepGoingOpt24,25
+      , caseHandlingOpt caseHandlingOpt25,26
+      , contextStringsOpt contextStringsOpt26,27
+      , notContextStringsOpt notContextStringsOpt27,28
+      , contextBeforeOpt contextBeforeOpt28,29
+      , contextAfterOpt contextAfterOpt29,30
+parser parser33,34
+parser parser34,35
+execParseArgs execParseArgs109,110
+execParseArgs execParseArgs110,111
+parseArgs parseArgs113,114
+parseArgs parseArgs114,115
+defaultOpts defaultOpts118,119
+
+./src/FindReplace.hs,1184
+module FindReplace FindReplace0,1
+data ReplacementCaseReplacementCase17,18
+    = ReplaceUpperReplaceUpper18,19
+    | ReplaceTitleReplaceTitle19,20
+    | ReplaceOriginalReplaceOriginal20,21
+newtype Replacement Replacement23,24
+    Rep Rep24,25
+    Rep { repParts repParts24,25
+data ReplacementPartReplacementPart26,27
+    = LiteralPart LiteralPart27,28
+    | GroupPart GroupPart28,29
+stringToCase stringToCase32,33
+stringToCase stringToCase33,34
+replacementCase replacementCase40,41
+replacementCase replacementCase41,42
+repMaxGroup repMaxGroup49,50
+repMaxGroup repMaxGroup50,51
+literalReplacement literalReplacement56,57
+literalReplacement literalReplacement57,58
+parseReplacement parseReplacement65,66
+parseReplacement parseReplacement66,67
+mergeLiterals mergeLiterals84,85
+mergeLiterals mergeLiterals85,86
+expand expand94,95
+expand expand95,96
+compileRegex compileRegex101,102
+compileRegex compileRegex102,103
+smartCaseRegex smartCaseRegex112,113
+smartCaseRegex smartCaseRegex113,114
+transformLineFixed transformLineFixed138,139
+transformLineRegex transformLineRegex159,160
+transformLineRegex transformLineRegex163,164
+
+./src/Gsub.hs,1886
+ module Gsub Gsub0,1
+type PatchData PatchData28,29
+data FileError FileError30,31
+data FileError = FileError FileError30,31
+data LineWithContext LineWithContext32,33
+data LineWithContext = LWCLWC32,33
+instance instance37,38
+exitIfErrors exitIfErrors41,42
+exitIfErrors exitIfErrors42,43
+checkFile checkFile49,50
+checkFile checkFile50,51
+testIsOpenInEmacs testIsOpenInEmacs72,73
+testIsOpenInEmacs testIsOpenInEmacs73,74
+validateFiles validateFiles81,82
+validateFiles validateFiles82,83
+maybeTransformLine maybeTransformLine85,86
+maybeTransformLine maybeTransformLine86,87
+transformLine transformLine103,104
+transformLine transformLine104,105
+fileContentToLines fileContentToLines111,112
+fileContentToLines fileContentToLines112,113
+linesToFileContent linesToFileContent115,116
+linesToFileContent linesToFileContent116,117
+addLineContext addLineContext119,120
+addLineContext addLineContext120,121
+transformFileContent transformFileContent127,128
+transformFileContent transformFileContent128,129
+diffFlags diffFlags140,141
+diffFlags diffFlags141,142
+getDiffOutput getDiffOutput150,151
+getDiffOutput getDiffOutput151,152
+runDiff runDiff163,164
+runDiff runDiff164,165
+withTempFile withTempFile179,180
+withSystemTempFile withSystemTempFile190,191
+withSystemTempFile withSystemTempFile191,192
+updateFileContent updateFileContent196,197
+updateFileContent updateFileContent197,198
+processSingleFile processSingleFile207,208
+processSingleFile processSingleFile208,209
+showCount showCount229,230
+showCount showCount233,234
+showLineCount showLineCount236,237
+showFileCount showFileCount238,239
+type ChangeCounts ChangeCounts242,243
+processFiles processFiles246,247
+processFiles processFiles247,248
+printSummary printSummary254,255
+printSummary printSummary255,256
+main main273,274
+main main274,275
+
+./src/Utils.hs,74
+module Utils Utils1,2
+firstJust firstJust6,7
+firstJust firstJust7,8
+
+./src/DiffDB.hs,84
+module DiffDB DiffDB0,1
+getDiffPath getDiffPath5,6
+getDiffPath getDiffPath6,7
+
+./src/Types.hs,488
+module TypesTypes0,1
+type FileContent FileContent12,13
+type LineContent LineContent13,14
+type Error Error15,16
+data PlanModePlanMode18,19
+    = RunModeRunMode19,20
+    | DryRunModeDryRunMode20,21
+    | DiffModeDiffMode21,22
+data ReplacementModeReplacementMode25,26
+    = RegexModeRegexMode26,27
+    | FixedModeFixedMode27,28
+data CaseHandlingCaseHandling31,32
+    = ConsiderCaseConsiderCase32,33
+    | IgnoreCaseIgnoreCase33,34
+    | SmartCaseSmartCase34,35
+
+./src/Scratch.hs,28
+module Scratch Scratch0,1
+
+./src/FakeFS/Directory.hs,278
+module FakeFS.DirectoryFakeFS.Directory0,1
+doesFileExist doesFileExist9,10
+doesFileExist doesFileExist10,11
+doesDirectoryExist doesDirectoryExist12,13
+doesDirectoryExist doesDirectoryExist13,14
+getPermissions getPermissions15,16
+getPermissions getPermissions16,17
+
+./src/Plan.hs,1224
+data TransformationTransformation18,19
+    = TransformRegex TransformRegex19,20
+    | TransformFixed TransformFixed20,21
+data PlanPlan23,24
+    = PlanPlan24,25
+      { options options25,26
+      , transformation transformation26,27
+      , contextPatterns contextPatterns27,28
+      , notContextPatterns notContextPatterns28,29
+      , patchFilePath patchFilePath29,30
+patternString patternString33,34
+replacementString replacementString34,35
+filesToProcess filesToProcess35,36
+planMode planMode36,37
+backupSuffix backupSuffix37,38
+replacementMode replacementMode38,39
+keepGoing keepGoing39,40
+caseHandling caseHandling40,41
+contextStrings contextStrings41,42
+notContextStrings notContextStrings42,43
+contextBefore contextBefore43,44
+contextAfter contextAfter44,45
+makePlan makePlan46,47
+makePlan makePlan47,48
+makePlan' makePlan'57,58
+makePlan' makePlan'58,59
+checkRegexM checkRegexM79,80
+checkRegexM checkRegexM82,83
+countPatternSlots countPatternSlots92,93
+countPatternSlots countPatternSlots93,94
+findPatchPath findPatchPath99,100
+findPatchPath findPatchPath100,101
+expandDiffPattern expandDiffPattern118,119
+expandDiffPattern expandDiffPattern119,120
+
+./Main.hs,37
+module Main Main0,1
+main main4,5
